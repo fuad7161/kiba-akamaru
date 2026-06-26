@@ -14,7 +14,7 @@
 - [x] `.env` present (local dev config)
 - [x] `.gitignore` present
 - [x] `Dockerfile` — multi-stage build (Go builder → Alpine)
-- [x] `docker-compose.yml` — services: `postgres`, `redis`, `api` with healthchecks
+- [x] `docker-compose.yml` — services: `postgres`, `redis`, `minio`, `api` with healthchecks
 - [x] `Makefile` — `run`, `build`, `test`, `migrate-up`, `migrate-down`, `docker-up`, `scrape` targets
 
 ### 🗄️ Database Layer
@@ -30,48 +30,55 @@
   - [x] `007_create_scrape_logs.up.sql` / `.down.sql`
 
 ### ⚙️ Configuration
-- [x] `internal/config/config.go` — env var loading + app config struct
+- [x] `internal/config/config.go` — env var loading + app config struct (S3→MinIO migrated)
 
 ### 🌐 Entry Point
-- [x] `cmd/server/main.go` — server bootstrap (DB connect, router init, server start)
+- [x] `cmd/server/main.go` — server bootstrap (DB + Redis + MinIO connect, auth routes wired, server start)
 
 ### 📦 Shared Utilities
 - [x] `pkg/response/response.go` — standard JSON success/error response helpers
+
+### 🔐 Auth (complete)
+- [x] `internal/model/user.go` — User + UserProfile structs
+- [x] `internal/repository/user_repo.go` — Create, GetByEmail, GetByID, GetByVerifyToken, GetByResetToken, MarkVerified, SetResetToken, UpdatePassword, UpdateLastLogin, IsEmailTaken
+- [x] `internal/service/auth_service.go` — Register, Login, VerifyEmail, ForgotPassword, ResetPassword, RefreshToken, Logout, GetProfile, JWT + bcrypt helpers
+- [x] `internal/middleware/auth.go` — AuthRequired JWT middleware
+- [x] `internal/handler/auth_handler.go` — All 8 auth endpoints
 
 ---
 
 ## ❌ Not Yet Implemented
 
-### 🏗️ Models (`internal/model/`) — **EMPTY**
-- [ ] `model/user.go`
+### 🏗️ Models (`internal/model/`) — partial
+- [x] `model/user.go`
 - [ ] `model/circular.go`
 - [ ] `model/category.go`
 - [ ] `model/organization.go`
 - [ ] `model/bookmark.go`
 - [ ] `model/scrape_log.go`
 
-### 🗃️ Repositories (`internal/repository/`) — **EMPTY**
+### 🗃️ Repositories (`internal/repository/`) — partial
+- [x] `repository/user_repo.go`
 - [ ] `repository/circular_repo.go` — DB queries for circulars (list, filter, search, upsert)
-- [ ] `repository/user_repo.go` — user CRUD + find by email
 - [ ] `repository/bookmark_repo.go` — add/remove/list bookmarks
 - [ ] `repository/alert_repo.go` — alert CRUD
 
-### 🔧 Services (`internal/service/`) — **EMPTY**
-- [ ] `service/auth_service.go` — JWT generation, bcrypt hash/compare, email verification tokens
+### 🔧 Services (`internal/service/`) — partial
+- [x] `service/auth_service.go` — JWT generation, bcrypt hash/compare, email verification tokens
 - [ ] `service/circular_service.go` — filtering, pagination logic, upsert orchestration
 - [ ] `service/email_service.go` — SMTP email sending (verification, alerts)
 - [ ] `service/scrape_service.go` — scrape orchestration, `RunBDJobsScrape`, `RunTeletalkScrape`, `ExpireOldCirculars`
 
-### 🧰 Handlers (`internal/handler/`) — **EMPTY**
-- [ ] `handler/health.go` — `GET /health`
-- [ ] `handler/auth.go` — Register, Login, Logout, Refresh, Verify Email, Forgot/Reset Password, `/auth/me`
+### 🧰 Handlers (`internal/handler/`) — partial
+- [x] `handler/auth.go` — Register, Login, Logout, Refresh, Verify Email, Forgot/Reset Password, `/auth/me`
+- [ ] `handler/health.go` — `GET /health` (inline in main.go, move later)
 - [ ] `handler/circular.go` — List (paginated+filtered), Detail, Search, Featured, Admin CRUD, Toggle featured
 - [ ] `handler/user.go` — Profile GET/PUT, Bookmarks CRUD, Alerts CRUD
 - [ ] `handler/category.go` — List categories, List organizations
 - [ ] `handler/admin.go` — Stats dashboard, User list, Manual scrape trigger, Scrape logs
 
-### 🛡️ Middleware (`internal/middleware/`) — **EMPTY**
-- [ ] `middleware/auth.go` — JWT validation middleware (`AuthRequired`)
+### 🛡️ Middleware (`internal/middleware/`) — partial
+- [x] `middleware/auth.go` — JWT validation middleware (`AuthRequired`)
 - [ ] `middleware/role.go` — Admin role guard (`AdminOnly`)
 - [ ] `middleware/ratelimit.go` — Redis-backed rate limiter
 - [ ] `middleware/cors.go` — CORS headers using `FRONTEND_URL`
@@ -118,23 +125,3 @@
 - [ ] Admin dashboard stats query (total circulars, active/expired counts, users)
 
 ---
-
-## 📊 Progress Summary
-
-| Area | Status |
-|---|---|
-| Project scaffolding & config | ✅ Done |
-| Docker / Makefile / CI config | ✅ Done |
-| DB migrations (all 7) | ✅ Done |
-| Database connection layer | ✅ Done |
-| Entry point (`main.go`) | ✅ Done |
-| Response helpers | ✅ Done |
-| **Models** | ❌ Not started |
-| **Repositories** | ❌ Not started |
-| **Services** | ❌ Not started |
-| **Handlers** | ❌ Not started |
-| **Middleware** | ❌ Not started |
-| **Scrapers** | ❌ Not started |
-| Email alerts | ❌ Not started |
-| Tests | ❌ Not started |
-| Production deployment | ❌ Not started |

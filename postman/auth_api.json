@@ -1,0 +1,412 @@
+{
+	"info": {
+		"_postman_id": "bd-govt-jobs-auth",
+		"name": "BD Govt Jobs API — Auth",
+		"description": "Auth endpoints for BD Govt Job Circular API.\n\nBase URL: http://localhost:8080/api/v1\n\nFlow:\n1. Register → email verification sent (check API logs)\n2. Verify Email (use token from logs)\n3. Login → saves access_token to collection variables\n4. GET /auth/me (uses access_token)\n5. POST /auth/refresh (reads refresh_token cookie — requires Postman Interceptor)\n6. POST /auth/logout (invalidates refresh token from Redis)\n7. Forgot Password → reset token in logs\n8. Reset Password (use token from logs)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080/api/v1"
+		},
+		{
+			"key": "access_token",
+			"value": ""
+		}
+	],
+	"item": [
+		{
+			"name": "1. Register",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status 201 Created\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"pm.test(\"Returns user ID\", function () {",
+							"    var json = pm.response.json();",
+							"    pm.expect(json.success).to.be.true;",
+							"    pm.expect(json.data.id).to.be.a('string');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"Test User\",\n    \"email\": \"test@example.com\",\n    \"password\": \"password123\",\n    \"phone\": \"01712345678\",\n    \"district\": \"Dhaka\",\n    \"education_level\": \"Masters\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/auth/register",
+					"host": ["{{base_url}}"],
+					"path": ["auth", "register"]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "2. Verify Email",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"var json = pm.response.json();",
+							"pm.test(\"Email verified message\", function () {",
+							"    pm.expect(json.data.message).to.include('verified');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"url": {
+					"raw": "{{base_url}}/auth/verify-email?token=REPLACE_WITH_TOKEN_FROM_LOGS",
+					"host": ["{{base_url}}"],
+					"path": ["auth", "verify-email"],
+					"query": [
+						{
+							"key": "token",
+							"value": "REPLACE_WITH_TOKEN_FROM_LOGS",
+							"description": "Check logs: docker compose logs api | grep 'token='"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "3. Login",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"var json = pm.response.json();",
+							"",
+							"pm.test(\"Returns access_token\", function () {",
+							"    pm.expect(json.data.access_token).to.be.a('string');",
+							"});",
+							"",
+							"pm.test(\"Returns user object\", function () {",
+							"    pm.expect(json.data.user.email).to.eql('test@example.com');",
+							"});",
+							"",
+							"// Save access token for other requests",
+							"pm.collectionVariables.set('access_token', json.data.access_token);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"email\": \"test@example.com\",\n    \"password\": \"password123\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/auth/login",
+					"host": ["{{base_url}}"],
+					"path": ["auth", "login"]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "4. Get Profile (auth/me)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"var json = pm.response.json();",
+							"",
+							"pm.test(\"Returns user profile\", function () {",
+							"    pm.expect(json.data.email).to.eql('test@example.com');",
+							"    pm.expect(json.data.name).to.eql('Test User');",
+							"    pm.expect(json.data.id).to.be.a('string');",
+							"});",
+							"",
+							"pm.test(\"No sensitive fields leaked\", function () {",
+							"    pm.expect(json.data.password_hash).to.be.undefined;",
+							"    pm.expect(json.data.verify_token).to.be.undefined;",
+							"    pm.expect(json.data.reset_token).to.be.undefined;",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/auth/me",
+					"host": ["{{base_url}}"],
+					"path": ["auth", "me"]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "5. Refresh Token (curl-based)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"var json = pm.response.json();",
+							"",
+							"pm.test(\"Returns new access_token\", function () {",
+							"    pm.expect(json.data.access_token).to.be.a('string');",
+							"});",
+							"",
+							"pm.collectionVariables.set('access_token', json.data.access_token);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "refresh_token=PASTE_REFRESH_TOKEN_HERE",
+						"description": "Postman can't read httpOnly cookies automatically. Either:\n• Use Postman Interceptor extension\n• Or run curl -v login → grab refresh_token from Set-Cookie → paste here"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/auth/refresh",
+					"host": ["{{base_url}}"],
+					"path": ["auth", "refresh"]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "6. Forgot Password",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"var json = pm.response.json();",
+							"pm.test(\"Generic success message (doesn't leak user info)\", function () {",
+							"    pm.expect(json.data.message).to.include('if an account');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"email\": \"test@example.com\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/auth/forgot-password",
+					"host": ["{{base_url}}"],
+					"path": ["auth", "forgot-password"]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "7. Reset Password",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"var json = pm.response.json();",
+							"pm.test(\"Password resets successfully\", function () {",
+							"    pm.expect(json.data.message).to.include('reset');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"token\": \"REPLACE_WITH_TOKEN_FROM_LOGS\",\n    \"new_password\": \"newpassword456\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/auth/reset-password",
+					"host": ["{{base_url}}"],
+					"path": ["auth", "reset-password"]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "8. Logout",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"var json = pm.response.json();",
+							"pm.test(\"Logout message\", function () {",
+							"    pm.expect(json.data.message).to.eql('logged out');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/auth/logout",
+					"host": ["{{base_url}}"],
+					"path": ["auth", "logout"]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "9. Register — Duplicate Email (expect 409)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status 409 Conflict\", function () {",
+							"    pm.response.to.have.status(409);",
+							"});",
+							"",
+							"var json = pm.response.json();",
+							"pm.test(\"Error mentions duplicate\", function () {",
+							"    pm.expect(json.error).to.include('already registered');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"Duplicate\",\n    \"email\": \"test@example.com\",\n    \"password\": \"password123\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/auth/register",
+					"host": ["{{base_url}}"],
+					"path": ["auth", "register"]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "10. Me — No Token (expect 401)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status 401 Unauthorized\", function () {",
+							"    pm.response.to.have.status(401);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"url": {
+					"raw": "{{base_url}}/auth/me",
+					"host": ["{{base_url}}"],
+					"path": ["auth", "me"]
+				}
+			},
+			"response": []
+		}
+	]
+}

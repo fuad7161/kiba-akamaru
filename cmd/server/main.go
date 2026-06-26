@@ -16,6 +16,10 @@ import (
 
 	"github.com/fuad71/job-circular-api/internal/config"
 	"github.com/fuad71/job-circular-api/internal/database"
+	"github.com/fuad71/job-circular-api/internal/handler"
+	authmw "github.com/fuad71/job-circular-api/internal/middleware"
+	"github.com/fuad71/job-circular-api/internal/repository"
+	"github.com/fuad71/job-circular-api/internal/service"
 	"github.com/fuad71/job-circular-api/pkg/response"
 )
 
@@ -42,6 +46,13 @@ func main() {
 	}
 	defer rdb.Close()
 
+	// ── Auth wiring ─────────────────────────────────────────────
+	userRepo := repository.NewUserRepo(pg)
+	authSvc := service.NewAuthService(userRepo, rdb, cfg)
+	authHandler := handler.NewAuthHandler(authSvc)
+	authRequired := authmw.AuthRequired(authSvc)
+
+	// ── Router ──────────────────────────────────────────────────
 	r := chi.NewRouter()
 
 	r.Use(middleware.Logger)
@@ -76,6 +87,25 @@ func main() {
 			response.JSON(w, http.StatusOK, map[string]string{
 				"message": "BD Govt Job Circular API v1.0.0",
 			})
+		})
+
+		// ── Auth routes ──────────────────────────────────────
+		r.Route("/auth", func(r chi.Router) {
+			r.Post("/register", authHandler.Register)
+			r.Post("/login", authHandler.Login)
+			r.Get("/verify-email", authHandler.VerifyEmail)
+			r.Post("/forgot-password", authHandler.ForgotPassword)
+			r.Post("/reset-password", authHandler.ResetPassword)
+
+			// JWTAuth group
+			r.Group(func(r chi.Router) {
+				r.Use(authRequired)
+				r.Post("/logout", authHandler.Logout)
+				r.Get("/me", authHandler.Me)
+			})
+
+			// Refresh (reads cookie, not auth header)
+			r.Post("/refresh", authHandler.Refresh)
 		})
 	})
 
