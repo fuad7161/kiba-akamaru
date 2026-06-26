@@ -8,6 +8,7 @@ bin/
 
 # Environment
 .env
+.env.local
 
 # IDE
 .vscode/
