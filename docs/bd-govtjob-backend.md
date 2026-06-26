@@ -751,12 +751,12 @@ FROM_EMAIL=noreply@yourdomain.com
 # Frontend (for CORS + email links)
 FRONTEND_URL=http://localhost:3000
 
-# File Storage (S3-compatible)
-S3_BUCKET=bd-govt-jobs-assets
-S3_REGION=ap-southeast-1
-S3_ACCESS_KEY=your_key
-S3_SECRET_KEY=your_secret
-S3_ENDPOINT=                 # leave empty for AWS, set for Cloudflare R2
+# File Storage (MinIO — S3-compatible, self-hosted)
+MINIO_BUCKET=bd-govt-jobs-assets
+MINIO_REGION=us-east-1
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_ENDPOINT=http://localhost:9000
 
 # Rate Limiting
 RATE_LIMIT_REQUESTS=100
