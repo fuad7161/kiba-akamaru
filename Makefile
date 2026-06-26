@@ -6,16 +6,25 @@ run:
 build:
 	go build -o bin/server ./cmd/server/main.go
 
+
 test:
 	go test ./... -v
 
 migrate-up:
-	migrate -path internal/database/migrations \
-	        -database "postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable" up
+	@docker run --rm \
+	  --network job-circuler_default \
+	  -v "$(PWD)/internal/database/migrations:/migrations" \
+	  migrate/migrate \
+	  -path=/migrations \
+	  -database "postgres://bduser:$$(grep -oP 'DB_PASSWORD=\K.*' .env)@postgres:5432/bdgovtjobs?sslmode=disable" up
 
 migrate-down:
-	migrate -path internal/database/migrations \
-	        -database "postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable" down
+	@docker run --rm \
+	  --network job-circuler_default \
+	  -v "$(PWD)/internal/database/migrations:/migrations" \
+	  migrate/migrate \
+	  -path=/migrations \
+	  -database "postgres://bduser:$$(grep -oP 'DB_PASSWORD=\K.*' .env)@postgres:5432/bdgovtjobs?sslmode=disable" down
 
 docker-up:
 	docker compose up --build
