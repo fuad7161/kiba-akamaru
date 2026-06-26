@@ -733,7 +733,8 @@ DB_MAX_CONNS=25
 DB_MIN_CONNS=5
 
 # Redis
-REDIS_URL=redis://localhost:6379/0
+REDIS_PASSWORD=your_strong_redis_password
+REDIS_URL=redis://:your_strong_redis_password@localhost:6379/0
 
 # JWT
 JWT_SECRET=your_256bit_random_secret_here
@@ -752,6 +753,8 @@ FROM_EMAIL=noreply@yourdomain.com
 FRONTEND_URL=http://localhost:3000
 
 # File Storage (MinIO — S3-compatible, self-hosted)
+MINIO_USER=minioadmin
+MINIO_PASSWORD=minioadmin
 MINIO_BUCKET=bd-govt-jobs-assets
 MINIO_REGION=us-east-1
 MINIO_ACCESS_KEY=minioadmin
@@ -761,6 +764,10 @@ MINIO_ENDPOINT=http://localhost:9000
 # Rate Limiting
 RATE_LIMIT_REQUESTS=100
 RATE_LIMIT_WINDOW=1m
+
+# Production (DigitalOcean)
+DO_REGISTRY=your-registry-name
+ACME_EMAIL=your@email.com
 ```
 
 ---

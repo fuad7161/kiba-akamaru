@@ -13,7 +13,17 @@
 
 ## Lifecycle
 
-### Start everything
+### Local development (auto-build)
+```bash
+docker compose up --build
+```
+
+### Start only services (no API) — run Go app locally
+```bash
+docker compose up -d postgres redis minio
+```
+
+### Start everything in Docker
 ```bash
 docker compose up -d
 ```
@@ -56,6 +66,26 @@ docker compose down -v
 ### Check status
 ```bash
 docker compose ps
+```
+
+---
+
+## Production (with docker-compose.prod.yml)
+
+### Deploy full stack
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+### Deploy API after new image push
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml pull api
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d api
+```
+
+### View production logs
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml logs -f api
 ```
 
 ---
@@ -234,19 +264,35 @@ docker compose exec api ls -la ./server
 
 ## Quick Reference
 
+### Local development
 ```bash
-# Full restart cycle after code changes
-docker compose down api && docker compose up -d --build api
+# Run services only (no API) — Go app on host
+docker compose up -d postgres redis minio
 
-# Check everything is up
+# Run everything in Docker
+make docker-up
+```
+
+### Production
+```bash
+# Deploy full stack
+make docker-prod-up
+
+# Update API only
+make docker-prod-deploy
+```
+
+### General
+```bash
+# Check status
 docker compose ps
 
-# Watch all logs
+# Watch logs
 docker compose logs -f
 
-# Stop everything for the day
+# Stop everything
 docker compose stop
 
-# Come back tomorrow
+# Resume
 docker compose start
 ```

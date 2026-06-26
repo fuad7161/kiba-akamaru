@@ -1,4 +1,4 @@
-.PHONY: run build test migrate-up migrate-down docker-up
+.PHONY: run build test migrate-up migrate-down docker-up docker-prod-up docker-prod-deploy
 
 run:
 	go run ./cmd/server/main.go
@@ -28,6 +28,21 @@ migrate-down:
 
 docker-up:
 	docker compose up --build
+
+PROD = docker compose -f docker-compose.yml -f docker-compose.prod.yml
+
+docker-prod-up:
+	$(PROD) up -d
+
+docker-prod-deploy:
+	$(PROD) pull api
+	$(PROD) up -d api
+
+docker-prod-logs:
+	$(PROD) logs -f api
+
+docker-prod-down:
+	$(PROD) down
 
 scrape:
 	curl -X POST http://localhost:8080/api/v1/admin/scrape/run \
