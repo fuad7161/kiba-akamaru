@@ -1,46 +1,19 @@
 version: "3.9"
 
 services:
-  traefik:
-    image: traefik:v3.0
-    command:
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-      - "--certificatesresolvers.le.acme.tlschallenge=true"
-      - "--certificatesresolvers.le.acme.email=${ACME_EMAIL}"
-      - "--certificatesresolvers.le.acme.storage=/certs/acme.json"
-      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - traefik_certs:/certs
-    restart: unless-stopped
+  # No Traefik needed — no domain, no HTTPS certificate.
+  # API is exposed directly on port 8080.
+  # Access via: http://<your-server-ip>:8080
 
   minio:
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.minio-api.rule=Host(`s3.yourdomain.com`)"
-      - "traefik.http.routers.minio-api.entrypoints=websecure"
-      - "traefik.http.routers.minio-api.tls.certresolver=le"
-      - "traefik.http.services.minio-api.loadbalancer.server.port=9000"
-      - "traefik.http.routers.minio-console.rule=Host(`minio.yourdomain.com`)"
-      - "traefik.http.routers.minio-console.entrypoints=websecure"
-      - "traefik.http.routers.minio-console.tls.certresolver=le"
-      - "traefik.http.services.minio-console.loadbalancer.server.port=9001"
+    ports:
+      - "9000:9000"   # S3 API — used by the Go app internally (but also reachable from outside)
+      - "9001:9001"   # MinIO web console — visit http://<ip>:9001 to manage buckets
 
   api:
     image: registry.digitalocean.com/${DO_REGISTRY}/bdgovtjobs-api:latest
     env_file: .env
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.api.rule=Host(`yourdomain.com`)"
-      - "traefik.http.routers.api.entrypoints=websecure"
-      - "traefik.http.routers.api.tls.certresolver=le"
-      - "traefik.http.services.api.loadbalancer.server.port=8080"
+    ports:
+      - "8080:8080"   # Public API — http://<your-server-ip>:8080
 
-volumes:
-  traefik_certs:
+volumes: {}
