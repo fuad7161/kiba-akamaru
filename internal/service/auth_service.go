@@ -8,7 +8,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/redis/go-redis/v9"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/fuad71/job-circular-api/internal/config"
@@ -18,12 +19,12 @@ import (
 
 type AuthService struct {
 	userRepo *repository.UserRepo
-	redis    *redis.Client
+	db       *pgxpool.Pool
 	cfg      *config.Config
 }
 
-func NewAuthService(repo *repository.UserRepo, redis *redis.Client, cfg *config.Config) *AuthService {
-	return &AuthService{userRepo: repo, redis: redis, cfg: cfg}
+func NewAuthService(repo *repository.UserRepo, db *pgxpool.Pool, cfg *config.Config) *AuthService {
+	return &AuthService{userRepo: repo, db: db, cfg: cfg}
 }
 
 // ── Password helpers ──────────────────────────────────────────────
@@ -83,21 +84,40 @@ func (s *AuthService) parseToken(tokenStr string) (*Claims, error) {
 	return claims, nil
 }
 
-// ── Token helpers (Redis) ─────────────────────────────────────────
+// ── Token helpers (PostgreSQL) ────────────────────────────────────
 
+// storeRefreshToken upserts one refresh token row per user.
 func (s *AuthService) storeRefreshToken(ctx context.Context, userID, token string) error {
-	key := fmt.Sprintf("refresh:%s", userID)
-	return s.redis.Set(ctx, key, token, s.cfg.JWTRefreshTTL).Err()
+	expiresAt := time.Now().Add(s.cfg.JWTRefreshTTL)
+	_, err := s.db.Exec(ctx, `
+		INSERT INTO refresh_tokens (user_id, token, expires_at)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (user_id) DO UPDATE
+		  SET token = EXCLUDED.token,
+		      expires_at = EXCLUDED.expires_at,
+		      created_at = NOW()
+	`, userID, token, expiresAt)
+	return err
 }
 
+// getRefreshToken fetches the stored token for a user if it hasn't expired.
 func (s *AuthService) getRefreshToken(ctx context.Context, userID string) (string, error) {
-	key := fmt.Sprintf("refresh:%s", userID)
-	return s.redis.Get(ctx, key).Result()
+	var stored string
+	err := s.db.QueryRow(ctx, `
+		SELECT token FROM refresh_tokens
+		WHERE user_id = $1 AND expires_at > NOW()
+	`, userID).Scan(&stored)
+	if err == pgx.ErrNoRows {
+		return "", fmt.Errorf("refresh token not found or expired")
+	}
+	return stored, err
 }
 
+// deleteRefreshToken removes the refresh token row for a user (logout).
 func (s *AuthService) deleteRefreshToken(ctx context.Context, userID string) error {
-	key := fmt.Sprintf("refresh:%s", userID)
-	return s.redis.Del(ctx, key).Err()
+	_, err := s.db.Exec(ctx,
+		`DELETE FROM refresh_tokens WHERE user_id = $1`, userID)
+	return err
 }
 
 // ── Random token generation ───────────────────────────────────────
@@ -298,7 +318,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, oldRefreshToken string) 
 		return nil, fmt.Errorf("invalid refresh token subject")
 	}
 
-	// Check against stored token in Redis
+	// Check against stored token in PostgreSQL
 	stored, err := s.getRefreshToken(ctx, userID)
 	if err != nil || stored != oldRefreshToken {
 		return nil, fmt.Errorf("refresh token expired or revoked")
