@@ -1,18 +1,7 @@
-version: "3.9"
-
 services:
   postgres:
     ports:
       - "5432:5432" # expose locally so you can use TablePlus/DBeaver
-
-  redis:
-    ports:
-      - "6379:6379" # expose locally for redis-cli
-
-  minio:
-    ports:
-      - "9000:9000"
-      - "9001:9001" # expose MinIO console locally
 
   api:
     build: . # build from source locally
