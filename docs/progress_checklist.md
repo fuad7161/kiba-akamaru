@@ -1,6 +1,6 @@
 # BD Govt Job Circular API — Progress Checklist & TODO
 
-> **Stack:** Go · PostgreSQL · Redis · Docker  
+> **Stack:** Go · PostgreSQL · Docker  
 > **Last checked:** June 26, 2026
 
 ---
@@ -14,12 +14,11 @@
 - [x] `.env` present (local dev config)
 - [x] `.gitignore` present
 - [x] `Dockerfile` — multi-stage build (Go builder → Alpine)
-- [x] `docker-compose.yml` — services: `postgres`, `redis`, `minio`, `api` with healthchecks
+- [x] `docker-compose.yml` — services: `postgres`, `api` with healthchecks
 - [x] `Makefile` — `run`, `build`, `test`, `migrate-up`, `migrate-down`, `docker-up`, `scrape` targets
 
 ### 🗄️ Database Layer
 - [x] `internal/database/postgres.go` — pgx connection pool setup
-- [x] `internal/database/redis.go` — Redis client initialization
 - [x] **All 7 SQL migrations** (up + down):
   - [x] `001_create_users.up.sql` / `.down.sql`
   - [x] `002_create_categories.up.sql` / `.down.sql` *(with seed data for 10 categories)*
@@ -30,10 +29,10 @@
   - [x] `007_create_scrape_logs.up.sql` / `.down.sql`
 
 ### ⚙️ Configuration
-- [x] `internal/config/config.go` — env var loading + app config struct (S3→MinIO migrated)
+- [x] `internal/config/config.go` — env var loading + app config struct
 
 ### 🌐 Entry Point
-- [x] `cmd/server/main.go` — server bootstrap (DB + Redis + MinIO connect, auth routes wired, server start)
+- [x] `cmd/server/main.go` — server bootstrap (DB connect, auth routes wired, server start)
 
 ### 📦 Shared Utilities
 - [x] `pkg/response/response.go` — standard JSON success/error response helpers
@@ -80,7 +79,7 @@
 ### 🛡️ Middleware (`internal/middleware/`) — partial
 - [x] `middleware/auth.go` — JWT validation middleware (`AuthRequired`)
 - [ ] `middleware/role.go` — Admin role guard (`AdminOnly`)
-- [ ] `middleware/ratelimit.go` — Redis-backed rate limiter
+- [ ] `middleware/ratelimit.go` — Rate limiter
 - [ ] `middleware/cors.go` — CORS headers using `FRONTEND_URL`
 
 ### 🕷️ Scraper (`internal/scraper/`) — **EMPTY**
@@ -102,10 +101,6 @@
 ### 🔍 Additional Data Sources
 - [ ] `bdgovtjobs.com` HTML scraper (backup aggregator)
 - [ ] Ministry `.gov.bd` sites scraper (may require PDF/image parsing)
-
-### 📄 File / Asset Handling
-- [ ] MinIO file upload (circular PDF / images) — service added to `docker-compose.yml`
-- [ ] `MINIO_BUCKET`, `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY` config in `.env.example`
 
 ### 🚀 Production & Deployment
 - [ ] `docker-compose.prod.yml` — production compose file

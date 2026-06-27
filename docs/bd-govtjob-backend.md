@@ -1,6 +1,6 @@
 # BD Govt Job Circular Portal — Backend Documentation
 
-> **Stack:** Go (Golang) · PostgreSQL · Redis · Docker  
+> **Stack:** Go (Golang) · PostgreSQL · Docker  
 > **Repo:** `job-circular-api`  
 > **Version:** 1.0.0
 
@@ -110,7 +110,6 @@ job-circular-api/
 | HTTP Router | **Chi** | `github.com/go-chi/chi/v5` — lightweight, idiomatic |
 | Database | **PostgreSQL 15** | `github.com/jackc/pgx/v5` — native Go PG driver |
 | Migrations | **golang-migrate** | `github.com/golang-migrate/migrate/v4` |
-| Redis | **Redis 7** | `github.com/redis/go-redis/v9` — cache + rate limit + session |
 | Auth | **JWT** | `github.com/golang-jwt/jwt/v5` |
 | Password | **bcrypt** | `golang.org/x/crypto/bcrypt` |
 | Validation | **validator** | `github.com/go-playground/validator/v10` |
@@ -732,10 +731,6 @@ DB_PASSWORD=your_strong_password
 DB_MAX_CONNS=25
 DB_MIN_CONNS=5
 
-# Redis
-REDIS_PASSWORD=your_strong_redis_password
-REDIS_URL=redis://:your_strong_redis_password@localhost:6379/0
-
 # JWT
 JWT_SECRET=your_256bit_random_secret_here
 JWT_REFRESH_SECRET=another_256bit_random_secret_here
@@ -751,15 +746,6 @@ FROM_EMAIL=noreply@yourdomain.com
 
 # Frontend (for CORS + email links)
 FRONTEND_URL=http://localhost:3000
-
-# File Storage (MinIO — S3-compatible, self-hosted)
-MINIO_USER=minioadmin
-MINIO_PASSWORD=minioadmin
-MINIO_BUCKET=bd-govt-jobs-assets
-MINIO_REGION=us-east-1
-MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=minioadmin
-MINIO_ENDPOINT=http://localhost:9000
 
 # Rate Limiting
 RATE_LIMIT_REQUESTS=100
@@ -839,7 +825,6 @@ scrape:
 # docker-compose.yml
 version: '3.9'
 
-services:
   postgres:
     image: postgres:15-alpine
     environment:
@@ -856,11 +841,6 @@ services:
       timeout: 5s
       retries: 5
 
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-
   api:
     build: .
     env_file: .env
@@ -869,8 +849,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_started
     restart: unless-stopped
 
 volumes:
@@ -931,7 +909,7 @@ FRONTEND_URL=https://your-nextjs-domain.com
 
 ```
 GET /health
-→ 200 { "status": "ok", "db": "ok", "redis": "ok" }
+→ 200 { "status": "ok", "db": "ok" }
 ```
 
 ---
