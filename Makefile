@@ -11,19 +11,19 @@ test:
 	go test ./... -v
 
 migrate-up:
-	docker compose run --rm \
-	  --no-deps \
+	@NETWORK=$$(docker network ls -q -f name=_default | head -1) ; \
+	docker run --rm \
+	  --network $$NETWORK \
 	  -v "$(PWD)/internal/database/migrations:/migrations" \
-	  -w /migrations \
 	  migrate/migrate \
 	  -path=/migrations \
 	  -database "postgres://bduser:$$(grep -oP 'DB_PASSWORD=\K.*' .env)@postgres:5432/bdgovtjobs?sslmode=disable" up
 
 migrate-down:
-	docker compose run --rm \
-	  --no-deps \
+	@NETWORK=$$(docker network ls -q -f name=_default | head -1) ; \
+	docker run --rm \
+	  --network $$NETWORK \
 	  -v "$(PWD)/internal/database/migrations:/migrations" \
-	  -w /migrations \
 	  migrate/migrate \
 	  -path=/migrations \
 	  -database "postgres://bduser:$$(grep -oP 'DB_PASSWORD=\K.*' .env)@postgres:5432/bdgovtjobs?sslmode=disable" down
