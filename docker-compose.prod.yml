@@ -1,19 +1,32 @@
 version: "3.9"
 
 services:
-  # No Traefik needed — no domain, no HTTPS certificate.
-  # API is exposed directly on port 8080.
-  # Access via: http://<your-server-ip>:8080
-
-  minio:
-    ports:
-      - "9000:9000"   # S3 API — used by the Go app internally (but also reachable from outside)
-      - "9001:9001"   # MinIO web console — visit http://<ip>:9001 to manage buckets
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: bdgovtjobs
+      POSTGRES_USER: bduser
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    command: >
+      postgres
+      -c max_connections=20
+      -c shared_buffers=64MB
+      -c effective_cache_size=256MB
+      -c work_mem=4MB
+      -c maintenance_work_mem=32MB
 
   api:
-    image: registry.digitalocean.com/${DO_REGISTRY}/bdgovtjobs-api:latest
-    env_file: .env
+    build: .
+    image: bdgovtjobs-api:latest
+    env_file: .env.prod
     ports:
-      - "8080:8080"   # Public API — http://<your-server-ip>:8080
+      - "8080:8080"
+    depends_on:
+      - postgres
+    restart: unless-stopped
 
-volumes: {}
+volumes:
+  pg_data:

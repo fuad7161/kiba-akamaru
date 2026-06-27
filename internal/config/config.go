@@ -21,7 +21,6 @@ type Config struct {
 	DBMaxConns int32
 	DBMinConns int32
 
-	RedisURL string
 
 	JWTSecret        string
 	JWTRefreshSecret string
@@ -35,11 +34,6 @@ type Config struct {
 	FromEmail   string
 	FrontendURL string
 
-	MinIOBucket    string
-	MinIORegion    string
-	MinIOAccessKey string
-	MinIOSecretKey string
-	MinIOEndpoint  string
 
 	RateLimitRequests int
 	RateLimitWindow   time.Duration
@@ -75,7 +69,6 @@ func Load() (*Config, error) {
 		DBMaxConns: int32(getEnvAsInt("DB_MAX_CONNS", 25)),
 		DBMinConns: int32(getEnvAsInt("DB_MIN_CONNS", 5)),
 
-		RedisURL: getEnv("REDIS_URL", "redis://localhost:6379/0"),
 
 		JWTSecret:        getEnv("JWT_SECRET", ""),
 		JWTRefreshSecret: getEnv("JWT_REFRESH_SECRET", ""),
@@ -89,11 +82,6 @@ func Load() (*Config, error) {
 		FromEmail:   getEnv("FROM_EMAIL", "noreply@yourdomain.com"),
 		FrontendURL: getEnv("FRONTEND_URL", "http://localhost:3000"),
 
-		MinIOBucket:    getEnv("MINIO_BUCKET", "bd-govt-jobs-assets"),
-		MinIORegion:    getEnv("MINIO_REGION", "us-east-1"),
-		MinIOAccessKey: getEnv("MINIO_ACCESS_KEY", "minioadmin"),
-		MinIOSecretKey: getEnv("MINIO_SECRET_KEY", "minioadmin"),
-		MinIOEndpoint:  getEnv("MINIO_ENDPOINT", "http://localhost:9000"),
 
 		RateLimitRequests: getEnvAsInt("RATE_LIMIT_REQUESTS", 100),
 		RateLimitWindow:   rateLimitWindow,

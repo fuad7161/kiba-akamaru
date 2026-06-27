@@ -40,15 +40,9 @@ func main() {
 	}
 	defer pg.Close()
 
-	rdb, err := database.ConnectRedis(cfg)
-	if err != nil {
-		log.Fatal().Err(err).Msg("failed to connect to redis")
-	}
-	defer rdb.Close()
-
 	// ── Auth wiring ─────────────────────────────────────────────
 	userRepo := repository.NewUserRepo(pg)
-	authSvc := service.NewAuthService(userRepo, rdb, cfg)
+	authSvc := service.NewAuthService(userRepo, pg, cfg)
 	authHandler := handler.NewAuthHandler(authSvc)
 	authRequired := authmw.AuthRequired(authSvc)
 
@@ -70,15 +64,9 @@ func main() {
 			dbStatus = "unavailable"
 		}
 
-		redisStatus := "ok"
-		if err := rdb.Ping(ctx).Err(); err != nil {
-			redisStatus = "unavailable"
-		}
-
 		response.JSON(w, http.StatusOK, map[string]string{
 			"status": "ok",
 			"db":     dbStatus,
-			"redis":  redisStatus,
 		})
 	})
 
