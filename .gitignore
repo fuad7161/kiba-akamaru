@@ -9,6 +9,7 @@ bin/
 # Environment
 .env
 .env.local
+.env.prod
 
 # IDE
 .vscode/
