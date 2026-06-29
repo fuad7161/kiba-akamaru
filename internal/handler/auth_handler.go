@@ -50,7 +50,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	response.JSON(w, http.StatusCreated, map[string]interface{}{
 		"id":      user.ID,
-		"message": "registration successful. check your email for verification",
+		"message": "registration successful",
 	})
 }
 

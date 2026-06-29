@@ -97,6 +97,10 @@ func main() {
 		})
 	})
 
+	// ── Serve Frontend ──────────────────────────────────────────
+	fs := http.FileServer(http.Dir("frontend"))
+	r.Handle("/*", fs)
+
 	addr := fmt.Sprintf(":%s", cfg.AppPort)
 	srv := &http.Server{
 		Addr:         addr,

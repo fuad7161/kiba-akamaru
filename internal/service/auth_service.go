@@ -174,13 +174,13 @@ func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*model
 		return nil, fmt.Errorf("hash password: %w", err)
 	}
 
-	token := generateToken()
 	user := &model.User{
 		Name:           input.Name,
 		Email:          input.Email,
 		PasswordHash:   hash,
 		Role:           "user",
-		VerifyToken:    &token,
+		IsVerified:     true,
+		VerifyToken:    nil,
 		Phone:          input.Phone,
 		District:       input.District,
 		EducationLevel: input.EducationLevel,
@@ -191,7 +191,7 @@ func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*model
 	}
 
 	// Send verification email (async-friendly, non-blocking)
-	go s.sendVerificationEmail(user.Email, user.Name, token)
+	// go s.sendVerificationEmail(user.Email, user.Name, token)
 
 	return user, nil
 }
