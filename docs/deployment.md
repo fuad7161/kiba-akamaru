@@ -105,6 +105,7 @@ sudo apt install -y make
 
 # Allow your user to run Docker without sudo
 sudo usermod -aG docker $USER
+
 newgrp docker
 
 # Install doctl so the server can pull images from the registry
