@@ -1,0 +1,91 @@
+<!-- Compact hero — thesis statement -->
+<section class="home-hero">
+    <h1>Find your next <span>government job</span> in Bangladesh</h1>
+    <p>
+        Track circulars from every ministry, bank, and public organization —
+        updated daily.
+    </p>
+
+    <form
+        class="home-search"
+        id="home-search-form"
+        hx-get="/pages/circulars.html"
+        hx-target="#main-content"
+        hx-push-url="true"
+        hx-swap="outerHTML"
+        hx-trigger="submit"
+    >
+        <input
+            type="text"
+            name="q"
+            placeholder="Search by title, organization, or keyword..."
+            id="hero-search"
+        />
+        <button type="submit">Search</button>
+    </form>
+
+    <div class="category-pills" id="home-category-pills"></div>
+</section>
+
+<!-- Content starts immediately -->
+<section class="section">
+    <div class="section-header">
+        <h2>Latest circulars</h2>
+        <a
+            href="/circulars"
+            class="view-all-link"
+            hx-get="/pages/circulars.html"
+            hx-target="#main-content"
+            hx-push-url="true"
+            hx-swap="outerHTML"
+            >Browse all →</a
+        >
+    </div>
+    <div class="circular-grid" id="featured-circulars"></div>
+</section>
+
+<section class="features">
+    <div class="features-grid">
+        <div class="feature-card">
+            <span class="feature-icon">📋</span>
+            <h3>Browse circulars</h3>
+            <p>
+                All government job circulars from 50+ organizations in one
+                place.
+            </p>
+        </div>
+        <div class="feature-card">
+            <span class="feature-icon">🔖</span>
+            <h3>Save and track</h3>
+            <p>Bookmark jobs and keep track of every application deadline.</p>
+        </div>
+        <div class="feature-card">
+            <span class="feature-icon">🔔</span>
+            <h3>Get notified</h3>
+            <p>
+                Create alerts for matching circulars and never miss a deadline.
+            </p>
+        </div>
+    </div>
+</section>
+
+<footer class="footer">© 2026 JobCirculer</footer>
+
+<script>
+    renderHomeCategoryPills();
+    renderFeaturedCirculars();
+
+    // Category pill click — navigate with search pre-filled
+    document
+        .getElementById("home-category-pills")
+        .addEventListener("click", function (evt) {
+            const pill = evt.target.closest(".cat-pill");
+            if (!pill) return;
+            const slug = pill.dataset.slug;
+            window.currentSearchValue = slug;
+            htmx.ajax("GET", "/pages/circulars.html", {
+                target: "#main-content",
+                swap: "outerHTML",
+            });
+        });
+</script>

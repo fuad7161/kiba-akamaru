@@ -1,0 +1,71 @@
+<nav class="navbar" id="navbar">
+    <div class="nav-left">
+        <a
+            href="/"
+            class="nav-brand"
+            hx-get="/pages/home.html"
+            hx-target="#main-content"
+            hx-push-url="true"
+            hx-swap="outerHTML"
+            _="on htmx:beforeRequest call closeAuthPanel()"
+            >JobCirculer</a
+        >
+        <div class="nav-links">
+            <a
+                href="/"
+                class="nav-link"
+                hx-get="/pages/home.html"
+                hx-target="#main-content"
+                hx-push-url="true"
+                hx-swap="outerHTML"
+                _="on htmx:beforeRequest call closeAuthPanel()"
+                >Home</a
+            >
+            <a
+                href="/circulars"
+                class="nav-link"
+                hx-get="/pages/circulars.html"
+                hx-target="#main-content"
+                hx-push-url="true"
+                hx-swap="outerHTML"
+                _="on htmx:beforeRequest call closeAuthPanel()"
+                >Browse Jobs</a
+            >
+            <a
+                href="/dashboard"
+                class="nav-link"
+                hx-get="/pages/dashboard.html"
+                hx-target="#main-content"
+                hx-push-url="true"
+                hx-swap="outerHTML"
+                id="nav-dashboard"
+                style="display: none"
+                >Dashboard</a
+            >
+        </div>
+    </div>
+    <div class="nav-actions">
+        <button
+            class="theme-toggle"
+            id="theme-toggle"
+            aria-label="Toggle theme"
+            title="Toggle dark mode"
+        >
+            ☀️
+        </button>
+        <div class="nav-auth-btns" id="nav-auth-btns">
+            <button class="secondary-btn" _="on click call openAuthPanel()">
+                Sign in
+            </button>
+            <button class="primary-btn" _="on click call openAuthPanel()">
+                Create account
+            </button>
+        </div>
+        <div class="nav-user" id="nav-user" style="display: none">
+            <span id="user-name-display"></span>
+            <button class="secondary-btn" _="on click call handleLogout()">
+                Sign out
+            </button>
+        </div>
+    </div>
+</nav>

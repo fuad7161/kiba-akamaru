@@ -98,8 +98,16 @@ func main() {
 	})
 
 	// ── Serve Frontend ──────────────────────────────────────────
-	fs := http.FileServer(http.Dir("frontend"))
-	r.Handle("/*", fs)
+	// Static assets with explicit paths
+	r.Handle("/css/*", http.StripPrefix("/css", http.FileServer(http.Dir("frontend/css"))))
+	r.Handle("/js/*", http.StripPrefix("/js", http.FileServer(http.Dir("frontend/js"))))
+	r.Handle("/pages/*", http.StripPrefix("/pages", http.FileServer(http.Dir("frontend/pages"))))
+	r.Handle("/components/*", http.StripPrefix("/components", http.FileServer(http.Dir("frontend/components"))))
+
+	// Root → index.html shell
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "frontend/index.html")
+	})
 
 	addr := fmt.Sprintf(":%s", cfg.AppPort)
 	srv := &http.Server{

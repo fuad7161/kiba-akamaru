@@ -1,0 +1,114 @@
+<div id="auth-overlay" class="auth-overlay" _="on click call closeAuthPanel()">
+    <div class="auth-panel" _="on click halt">
+        <button class="auth-close" _="on click call closeAuthPanel()">×</button>
+
+        <div class="auth-header">
+            <h1>Welcome</h1>
+            <p>Sign in or create a new account.</p>
+        </div>
+
+        <div class="auth-tabs">
+            <button
+                class="tab-btn active"
+                id="tab-login"
+                _="on click call switchTab('login')"
+            >
+                Sign in
+            </button>
+            <button
+                class="tab-btn"
+                id="tab-register"
+                _="on click call switchTab('register')"
+            >
+                Create account
+            </button>
+        </div>
+
+        <form
+            id="login-form"
+            class="auth-form active"
+            hx-post="/api/v1/auth/login"
+            hx-target-4xx="#login-error"
+            hx-target-500="#login-error"
+            hx-swap="innerHTML"
+        >
+            <div class="input-group">
+                <label for="login-email">Email</label>
+                <input
+                    type="email"
+                    id="login-email"
+                    name="email"
+                    required
+                    placeholder="you@example.com"
+                />
+            </div>
+            <div class="input-group">
+                <label for="login-password">Password</label>
+                <input
+                    type="password"
+                    id="login-password"
+                    name="password"
+                    required
+                    placeholder="Your password"
+                />
+            </div>
+            <button
+                type="submit"
+                class="primary-btn"
+                style="width: 100%; justify-content: center"
+            >
+                Sign in
+            </button>
+            <div id="login-error" class="error-msg"></div>
+        </form>
+
+        <form
+            id="register-form"
+            class="auth-form"
+            hx-post="/api/v1/auth/register"
+            hx-target-4xx="#register-error"
+            hx-target-500="#register-error"
+            hx-swap="innerHTML"
+        >
+            <div class="input-group">
+                <label for="register-name">Full name</label>
+                <input
+                    type="text"
+                    id="register-name"
+                    name="name"
+                    required
+                    placeholder="Your name"
+                />
+            </div>
+            <div class="input-group">
+                <label for="register-email">Email</label>
+                <input
+                    type="email"
+                    id="register-email"
+                    name="email"
+                    required
+                    placeholder="you@example.com"
+                />
+            </div>
+            <div class="input-group">
+                <label for="register-password">Password</label>
+                <input
+                    type="password"
+                    id="register-password"
+                    name="password"
+                    required
+                    minlength="6"
+                    placeholder="At least 6 characters"
+                />
+            </div>
+            <button
+                type="submit"
+                class="primary-btn"
+                style="width: 100%; justify-content: center"
+            >
+                Create account
+            </button>
+            <div id="register-error" class="error-msg"></div>
+        </form>
+    </div>
+</div>

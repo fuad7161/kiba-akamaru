@@ -1,0 +1,77 @@
+<div class="page-container">
+    <div class="circulars-header">
+        <h2>Browse circulars</h2>
+        <div class="search-bar">
+            <input
+                type="text"
+                id="search-input"
+                placeholder="Search by title, organization..."
+            />
+        </div>
+        <div class="filter-row">
+            <div class="category-pills" id="category-pills"></div>
+            <select id="sort-select" class="sort-select">
+                <option value="published_desc">Latest first</option>
+                <option value="deadline_asc">Deadline soonest</option>
+                <option value="views_desc">Most viewed</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="circular-grid" id="circular-list"></div>
+
+    <div class="empty-state" id="empty-state" style="display: none">
+        <span class="empty-icon">🔍</span>
+        <h3>No circulars found</h3>
+        <p>Try a different search term or category.</p>
+    </div>
+
+    <div class="pagination" id="pagination"></div>
+</div>
+
+<script>
+    // Pre-fill from home search
+    if (window.currentSearchValue) {
+        var si = document.getElementById("search-input");
+        if (si) {
+            si.value = window.currentSearchValue;
+        }
+        window.currentSearchValue = null;
+    }
+
+    renderCategoryPills();
+    filterCirculars();
+
+    // Search input (debounced via setTimeout)
+    (function () {
+        var timer;
+        var el = document.getElementById("search-input");
+        if (!el) return;
+        el.addEventListener("input", function () {
+            clearTimeout(timer);
+            timer = setTimeout(filterCirculars, 300);
+        });
+    })();
+
+    // Sort select
+    var sort = document.getElementById("sort-select");
+    if (sort) sort.addEventListener("change", filterCirculars);
+
+    // Category pills
+    var pills = document.getElementById("category-pills");
+    if (pills) {
+        pills.addEventListener("click", function (evt) {
+            var pill = evt.target.closest(".cat-pill");
+            if (!pill) return;
+            var slug = pill.dataset.slug;
+            var si = document.getElementById("search-input");
+            if (si) si.value = slug;
+            // Toggle active
+            pills.querySelectorAll(".cat-pill").forEach(function (p) {
+                p.classList.remove("active");
+            });
+            pill.classList.add("active");
+            filterCirculars();
+        });
+    }
+</script>

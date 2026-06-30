@@ -1,0 +1,16 @@
+<div class="page-container" id="circular-detail-container">
+    <button
+        class="back-btn"
+        hx-get="/pages/circulars.html"
+        hx-target="#main-content"
+        hx-push-url="true"
+        hx-swap="outerHTML"
+    >
+        ← Back to circulars
+    </button>
+    <div id="circular-detail-content"></div>
+</div>
+
+<script>
+    renderCircularDetail();
+</script>
