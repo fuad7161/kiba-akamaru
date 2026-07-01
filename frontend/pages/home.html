@@ -12,7 +12,7 @@
         hx-get="/pages/circulars.html"
         hx-target="#main-content"
         hx-push-url="true"
-        hx-swap="outerHTML"
+        hx-swap="innerHTML"
         hx-trigger="submit"
         _="on submit set window.currentSearchValue to value of #hero-search then halt"
     >
@@ -38,7 +38,7 @@
             hx-get="/pages/circulars.html"
             hx-target="#main-content"
             hx-push-url="true"
-            hx-swap="outerHTML"
+            hx-swap="innerHTML"
             >Browse all →</a
         >
     </div>
@@ -86,7 +86,7 @@
             window.currentSearchValue = slug;
             htmx.ajax("GET", "/pages/circulars.html", {
                 target: "#main-content",
-                swap: "outerHTML",
+                swap: "innerHTML",
             });
         });
 </script>

@@ -94,7 +94,7 @@ function handleDynamicClick(evt) {
     window.currentCircularId = cardTitle.dataset.circularId;
     htmx.ajax("GET", "/pages/circular-detail.html", {
       target: "#main-content",
-      swap: "outerHTML",
+      swap: "innerHTML",
     });
     return;
   }
@@ -361,7 +361,7 @@ function handleLogout() {
   clearAuth();
   htmx.ajax("GET", "/pages/home.html", {
     target: "#main-content",
-    swap: "outerHTML",
+    swap: "innerHTML",
   });
 }
 
