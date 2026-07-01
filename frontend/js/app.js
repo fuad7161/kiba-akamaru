@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // ── Configuration ──────────────────────────────────────────────────────────────
-var API_URL = "http://localhost:8080/api/v1";
+var API_URL = "/api/v1";
 var ITEMS_PER_PAGE = 6;
 var currentFilters = { search: "", sort: "published_desc", category: "" };
 var currentPage = 1;
