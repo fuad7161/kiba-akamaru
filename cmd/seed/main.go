@@ -17,15 +17,13 @@ func main() {
 	log.Logger = zerolog.New(os.Stderr).With().Timestamp().Logger()
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339})
 
-	email := os.Getenv("SEED_ADMIN_EMAIL")
-	password := os.Getenv("SEED_ADMIN_PASSWORD")
-	if email == "" || password == "" {
-		log.Fatal().Msg("SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD must be set")
-	}
-
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to load config")
+	}
+
+	if cfg.SeedAdminEmail == "" || cfg.SeedAdminPassword == "" {
+		log.Fatal().Msg("SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD must be set in .env")
 	}
 
 	pg, err := database.ConnectPostgres(cfg)
@@ -39,16 +37,16 @@ func main() {
 
 	// Check if admin already exists
 	var exists bool
-	err = pg.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)`, email).Scan(&exists)
+	err = pg.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)`, cfg.SeedAdminEmail).Scan(&exists)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to check existing user")
 	}
 	if exists {
-		log.Info().Str("email", email).Msg("admin user already exists, nothing to do")
+		log.Info().Str("email", cfg.SeedAdminEmail).Msg("admin user already exists, nothing to do")
 		return
 	}
 
-	hash, err := service.HashPassword(password)
+	hash, err := service.HashPassword(cfg.SeedAdminPassword)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to hash password")
 	}
@@ -56,11 +54,11 @@ func main() {
 	var id string
 	err = pg.QueryRow(ctx,
 		`INSERT INTO users (name, email, password_hash, role, is_verified) VALUES ($1, $2, $3, $4, true) RETURNING id`,
-		"Admin", email, hash, "admin",
+		cfg.SeedAdminName, cfg.SeedAdminEmail, hash, "admin",
 	).Scan(&id)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to create admin user")
 	}
 
-	log.Info().Str("email", email).Str("id", id).Msg("admin user created successfully")
+	log.Info().Str("email", cfg.SeedAdminEmail).Str("name", cfg.SeedAdminName).Str("id", id).Msg("admin user created successfully")
 }

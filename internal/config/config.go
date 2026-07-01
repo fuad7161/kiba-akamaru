@@ -21,7 +21,6 @@ type Config struct {
 	DBMaxConns int32
 	DBMinConns int32
 
-
 	JWTSecret        string
 	JWTRefreshSecret string
 	JWTAccessTTL     time.Duration
@@ -34,9 +33,12 @@ type Config struct {
 	FromEmail   string
 	FrontendURL string
 
-
 	RateLimitRequests int
 	RateLimitWindow   time.Duration
+
+	SeedAdminEmail    string
+	SeedAdminPassword string
+	SeedAdminName     string
 }
 
 func Load() (*Config, error) {
@@ -69,7 +71,6 @@ func Load() (*Config, error) {
 		DBMaxConns: int32(getEnvAsInt("DB_MAX_CONNS", 25)),
 		DBMinConns: int32(getEnvAsInt("DB_MIN_CONNS", 5)),
 
-
 		JWTSecret:        getEnv("JWT_SECRET", ""),
 		JWTRefreshSecret: getEnv("JWT_REFRESH_SECRET", ""),
 		JWTAccessTTL:     accessTTL,
@@ -82,9 +83,12 @@ func Load() (*Config, error) {
 		FromEmail:   getEnv("FROM_EMAIL", "noreply@yourdomain.com"),
 		FrontendURL: getEnv("FRONTEND_URL", "http://localhost:3000"),
 
-
 		RateLimitRequests: getEnvAsInt("RATE_LIMIT_REQUESTS", 100),
 		RateLimitWindow:   rateLimitWindow,
+
+		SeedAdminEmail:    getEnv("SEED_ADMIN_EMAIL", ""),
+		SeedAdminPassword: getEnv("SEED_ADMIN_PASSWORD", ""),
+		SeedAdminName:     getEnv("SEED_ADMIN_NAME", "Admin"),
 	}
 
 	return cfg, nil
