@@ -3,6 +3,83 @@
         <h2>Welcome, <span id="dashboard-user-name"></span></h2>
         <p>Your saved circulars and alerts at a glance.</p>
     </div>
+
+    <!-- Admin Panel (hidden for non-admin) -->
+    <div id="admin-panel" style="display: none; margin-bottom: 2rem">
+        <div class="dashboard-card" style="margin-bottom: 1.5rem">
+            <h3>📊 Admin Overview</h3>
+            <div class="stats-grid" id="admin-stats">
+                <div class="loading-state">
+                    <span class="loading-spinner"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-card" style="margin-bottom: 1.5rem">
+            <h3>🔄 Manual Scrape</h3>
+            <p
+                style="
+                    font-size: 0.85rem;
+                    color: var(--ghost);
+                    margin-bottom: 0.75rem;
+                "
+            >
+                Trigger a scrape run to fetch new circulars from configured
+                sources.
+            </p>
+            <div
+                style="
+                    display: flex;
+                    align-items: center;
+                    gap: 1rem;
+                    flex-wrap: wrap;
+                "
+            >
+                <button
+                    class="primary-btn"
+                    id="scrape-trigger-btn"
+                    onclick="triggerScrape()"
+                >
+                    Run Manual Scrape
+                </button>
+                <span id="scrape-status" style="font-size: 0.85rem"></span>
+            </div>
+        </div>
+
+        <div class="dashboard-card" style="margin-bottom: 1.5rem">
+            <h3>📋 Recent Scrape Logs</h3>
+            <div id="scrape-logs">
+                <div class="loading-state">
+                    <span class="loading-spinner"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-card">
+            <h3>✏️ Circular Management</h3>
+            <p
+                style="
+                    font-size: 0.85rem;
+                    color: var(--ghost);
+                    margin-bottom: 0.75rem;
+                "
+            >
+                Create, edit, and manage circulars.
+            </p>
+            <a
+                href="/admin/circulars"
+                class="primary-btn"
+                hx-get="/pages/admin-circulars.html"
+                hx-target="#main-content"
+                hx-push-url="true"
+                hx-swap="innerHTML"
+                style="display: inline-flex"
+                >Go to Circular Manager →</a
+            >
+        </div>
+    </div>
+
+    <!-- User Dashboard -->
     <div class="dashboard-grid">
         <div class="dashboard-card">
             <h3>Bookmarked jobs</h3>

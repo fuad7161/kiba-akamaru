@@ -56,6 +56,21 @@ function apiDelete(path) {
   });
 }
 
+function apiPatch(path, body) {
+  var headers = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = "Bearer " + token;
+  return fetch(API_URL + path, {
+    method: "PATCH",
+    headers: headers,
+    body: body ? JSON.stringify(body) : undefined,
+    credentials: "include",
+  }).then(function (res) {
+    return res.json().then(function (data) {
+      return { ok: res.ok, status: res.status, body: data };
+    });
+  });
+}
+
 // Init — set up event delegation
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -328,15 +343,19 @@ function setAuthUI() {
     ud = document.getElementById("nav-user");
   var nd = document.getElementById("user-name-display"),
     dl = document.getElementById("nav-dashboard");
+  var al = document.getElementById("nav-admin");
+
   if (token && user) {
     if (gb) gb.style.display = "none";
     if (ud) ud.style.display = "flex";
     if (nd) nd.textContent = user.name;
     if (dl) dl.style.display = "inline";
+    if (al) al.style.display = user.role === "admin" ? "inline" : "none";
   } else {
     if (gb) gb.style.display = "flex";
     if (ud) ud.style.display = "none";
     if (dl) dl.style.display = "none";
+    if (al) al.style.display = "none";
   }
 }
 
@@ -360,6 +379,25 @@ function isLoggedIn() {
 function requireAuth() {
   if (!isLoggedIn()) {
     openAuthPanel();
+    return false;
+  }
+  return true;
+}
+
+function isAdmin() {
+  return user && user.role === "admin";
+}
+
+function requireAdmin() {
+  if (!isLoggedIn()) {
+    openAuthPanel();
+    return false;
+  }
+  if (!isAdmin()) {
+    htmx.ajax("GET", "/pages/dashboard.html", {
+      target: "#main-content",
+      swap: "innerHTML",
+    });
     return false;
   }
   return true;
@@ -870,6 +908,15 @@ function renderDashboard() {
   }
   if (nameEl) nameEl.textContent = user.name;
 
+  // Show/hide admin panel
+  var adminPanel = document.getElementById("admin-panel");
+  if (adminPanel) {
+    adminPanel.style.display = isAdmin() ? "block" : "none";
+  }
+  if (isAdmin()) {
+    renderAdminDashboard();
+  }
+
   fetchBookmarks().then(function () {
     var listEl = document.getElementById("bookmark-list");
     var noBmEl = document.getElementById("no-bookmarks");
@@ -880,7 +927,6 @@ function renderDashboard() {
       return;
     }
 
-    // For each bookmark, fetch the circular detail
     if (listEl) {
       listEl.innerHTML =
         '<div class="loading-state"><span class="loading-spinner"></span><p>Loading bookmarks...</p></div>';
@@ -903,6 +949,334 @@ function renderDashboard() {
         noBmEl.style.display = valid.length === 0 ? "block" : "none";
       }
     });
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Admin Dashboard
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function fetchAdminStats() {
+  return apiGet("/admin/stats").then(function (res) {
+    if (res.ok && res.body.success) return res.body.data;
+    return {};
+  });
+}
+
+function fetchScrapeLogs() {
+  return apiGet("/admin/scrape/logs").then(function (res) {
+    if (res.ok && res.body.success) return res.body.data || [];
+    return [];
+  });
+}
+
+function triggerScrape() {
+  var btn = document.getElementById("scrape-trigger-btn");
+  var status = document.getElementById("scrape-status");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Running...";
+  }
+  if (status) status.textContent = "";
+
+  apiPost("/admin/scrape/run")
+    .then(function (res) {
+      if (res.ok && res.body.success) {
+        if (status) {
+          status.textContent =
+            res.body.data && res.body.data.message
+              ? res.body.data.message
+              : "Scrape triggered";
+          status.style.color = "var(--success)";
+        }
+      } else {
+        if (status) {
+          status.textContent = "Failed to trigger scrape";
+          status.style.color = "var(--error)";
+        }
+      }
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Run Manual Scrape";
+      }
+    })
+    .catch(function () {
+      if (status) {
+        status.textContent = "Network error";
+        status.style.color = "var(--error)";
+      }
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Run Manual Scrape";
+      }
+    });
+}
+
+function renderAdminDashboard() {
+  // Stats
+  var statsEl = document.getElementById("admin-stats");
+  if (statsEl) {
+    fetchAdminStats().then(function (stats) {
+      statsEl.innerHTML = [
+        '<div class="stat-card">',
+        '<span class="stat-value">' + (stats.total_circulars || 0) + "</span>",
+        '<span class="stat-label">Total Circulars</span>',
+        "</div>",
+        '<div class="stat-card">',
+        '<span class="stat-value">' + (stats.active_circulars || 0) + "</span>",
+        '<span class="stat-label">Active</span>',
+        "</div>",
+        '<div class="stat-card">',
+        '<span class="stat-value">' + (stats.total_users || 0) + "</span>",
+        '<span class="stat-label">Users</span>',
+        "</div>",
+      ].join("");
+    });
+  }
+
+  // Scrape logs
+  var logsEl = document.getElementById("scrape-logs");
+  if (logsEl) {
+    fetchScrapeLogs().then(function (logs) {
+      if (logs.length === 0) {
+        logsEl.innerHTML =
+          '<p style="color:var(--ghost);font-size:0.85rem;">No scrape runs yet.</p>';
+        return;
+      }
+      logsEl.innerHTML = logs
+        .slice(0, 10)
+        .map(function (log) {
+          var statusClass =
+            log.status === "completed"
+              ? "ok"
+              : log.status === "failed"
+                ? "now"
+                : "soon";
+          return [
+            '<div class="scrape-log-row">',
+            '<span class="deadline-badge ' +
+              statusClass +
+              '">' +
+              log.status +
+              "</span>",
+            "<span>" + (log.source || "manual") + "</span>",
+            "<span>Fetched: " + (log.total_fetched || 0) + "</span>",
+            "<span>New: " + (log.new_inserted || 0) + "</span>",
+            '<span style="color:var(--ghost);font-size:0.75rem;">' +
+              formatDate(log.started_at) +
+              "</span>",
+            "</div>",
+          ].join("");
+        })
+        .join("");
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Admin Circular CRUD
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function loadAdminCirculars() {
+  var container = document.getElementById("admin-circular-list");
+  if (!container) return;
+
+  apiGet("/circulars?limit=100&status=all").then(function (res) {
+    if (!res.ok || !res.body.success) {
+      container.innerHTML = "<p>Failed to load circulars.</p>";
+      return;
+    }
+    var items = res.body.data.items || [];
+    if (items.length === 0) {
+      container.innerHTML =
+        "<p style='color:var(--ghost)'>No circulars found.</p>";
+      return;
+    }
+    container.innerHTML =
+      '<table class="admin-table"><thead><tr>' +
+      "<th>Title</th><th>Org</th><th>Status</th><th>Featured</th><th>Actions</th>" +
+      "</tr></thead><tbody>" +
+      items
+        .map(function (c) {
+          return [
+            "<tr>",
+            "<td>" + escapeHtml(c.title) + "</td>",
+            "<td>" + escapeHtml(c.organization_name) + "</td>",
+            '<td><span class="status-badge ' +
+              (c.status || "active") +
+              '">' +
+              (c.status || "active") +
+              "</span></td>",
+            "<td>" + (c.is_featured ? "⭐" : "—") + "</td>",
+            '<td class="admin-actions">',
+            '<button class="secondary-btn" onclick="editCircular(\'' +
+              c.id +
+              '\')" style="font-size:0.75rem;padding:0.25rem 0.5rem;">Edit</button>',
+            '<button class="secondary-btn" onclick="toggleCircularFeature(\'' +
+              c.id +
+              '\')" style="font-size:0.75rem;padding:0.25rem 0.5rem;">' +
+              (c.is_featured ? "Unfeature" : "Feature") +
+              "</button>",
+            '<button class="secondary-btn" onclick="deleteCircular(\'' +
+              c.id +
+              '\')" style="font-size:0.75rem;padding:0.25rem 0.5rem;color:var(--error);">Delete</button>',
+            "</td>",
+            "</tr>",
+          ].join("");
+        })
+        .join("") +
+      "</tbody></table>";
+  });
+}
+
+function showCircularForm(id) {
+  var panel = document.getElementById("circular-form-panel");
+  if (!panel) return;
+  panel.style.display = "block";
+
+  // Reset form
+  document.getElementById("circular-edit-id").value = "";
+  document.getElementById("circ-title").value = "";
+  document.getElementById("circ-org").value = "";
+  document.getElementById("circ-cat").value = "";
+  document.getElementById("circ-vacancy").value = "";
+  document.getElementById("circ-location").value = "Bangladesh";
+  document.getElementById("circ-pub").value = new Date()
+    .toISOString()
+    .split("T")[0];
+  document.getElementById("circ-deadline").value = "";
+  document.getElementById("circ-salary").value = "";
+  document.getElementById("circ-apply-url").value = "";
+  document.getElementById("circ-status").value = "active";
+  document.getElementById("circ-featured").checked = false;
+  document.getElementById("circ-desc").value = "";
+  document.getElementById("circ-req").value = "";
+  document.getElementById("circular-form-error").textContent = "";
+
+  if (id) {
+    document.getElementById("circular-form-title").textContent =
+      "Edit Circular";
+    document.getElementById("circular-save-btn").textContent = "Update";
+    fetchCircularDetail(id).then(function (c) {
+      if (!c) return;
+      document.getElementById("circular-edit-id").value = c.id;
+      document.getElementById("circ-title").value = c.title || "";
+      document.getElementById("circ-org").value = c.organization_name || "";
+      document.getElementById("circ-cat").value = c.category_id || "";
+      document.getElementById("circ-vacancy").value = c.vacancy || "";
+      document.getElementById("circ-location").value =
+        c.location || "Bangladesh";
+      if (c.published_date)
+        document.getElementById("circ-pub").value =
+          c.published_date.split("T")[0];
+      if (c.application_deadline)
+        document.getElementById("circ-deadline").value =
+          c.application_deadline.split("T")[0];
+      document.getElementById("circ-salary").value = c.salary_display || "";
+      document.getElementById("circ-apply-url").value = c.apply_url || "";
+      document.getElementById("circ-status").value = c.status || "active";
+      document.getElementById("circ-featured").checked = !!c.is_featured;
+      document.getElementById("circ-desc").value = c.description || "";
+      document.getElementById("circ-req").value = c.requirements || "";
+      panel.scrollIntoView({ behavior: "smooth" });
+    });
+  } else {
+    document.getElementById("circular-form-title").textContent =
+      "Create Circular";
+    document.getElementById("circular-save-btn").textContent = "Save";
+    panel.scrollIntoView({ behavior: "smooth" });
+  }
+}
+
+function hideCircularForm() {
+  var panel = document.getElementById("circular-form-panel");
+  if (panel) panel.style.display = "none";
+}
+
+function saveCircular(evt) {
+  evt.preventDefault();
+  var errorEl = document.getElementById("circular-form-error");
+  var id = document.getElementById("circular-edit-id").value;
+  var body = {
+    title: document.getElementById("circ-title").value.trim(),
+    organization_name: document.getElementById("circ-org").value.trim(),
+    category_id: parseInt(document.getElementById("circ-cat").value) || null,
+    vacancy: parseInt(document.getElementById("circ-vacancy").value) || null,
+    location:
+      document.getElementById("circ-location").value.trim() || "Bangladesh",
+    published_date: document.getElementById("circ-pub").value,
+    application_deadline:
+      document.getElementById("circ-deadline").value || null,
+    salary_display: document.getElementById("circ-salary").value.trim() || null,
+    apply_url: document.getElementById("circ-apply-url").value.trim() || null,
+    status: document.getElementById("circ-status").value,
+    is_featured: document.getElementById("circ-featured").checked,
+    description: document.getElementById("circ-desc").value.trim() || null,
+    requirements: document.getElementById("circ-req").value.trim() || null,
+  };
+
+  if (!body.title || !body.organization_name || !body.published_date) {
+    if (errorEl)
+      errorEl.textContent =
+        "Title, Organization, and Published Date are required";
+    return;
+  }
+
+  if (errorEl) errorEl.textContent = "Saving...";
+
+  var method = id
+    ? apiPut("/circulars/" + id, body)
+    : apiPost("/circulars", body);
+
+  method
+    .then(function (res) {
+      if (res.ok) {
+        if (errorEl) errorEl.textContent = "";
+        hideCircularForm();
+        loadAdminCirculars();
+      } else {
+        if (errorEl)
+          errorEl.textContent = (res.body && res.body.error) || "Save failed";
+      }
+    })
+    .catch(function () {
+      if (errorEl) errorEl.textContent = "Network error";
+    });
+}
+
+function apiPut(path, body) {
+  var headers = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = "Bearer " + token;
+  return fetch(API_URL + path, {
+    method: "PUT",
+    headers: headers,
+    body: JSON.stringify(body),
+    credentials: "include",
+  }).then(function (res) {
+    return res.json().then(function (data) {
+      return { ok: res.ok, status: res.status, body: data };
+    });
+  });
+}
+
+function editCircular(id) {
+  showCircularForm(id);
+}
+
+function deleteCircular(id) {
+  if (!confirm("Delete this circular? This cannot be undone.")) return;
+  apiDelete("/circulars/" + id).then(function (res) {
+    if (res.ok) {
+      loadAdminCirculars();
+    }
+  });
+}
+
+function toggleCircularFeature(id) {
+  apiPatch("/circulars/" + id + "/feature").then(function (res) {
+    if (res.ok) {
+      loadAdminCirculars();
+    }
   });
 }
 

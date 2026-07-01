@@ -1,0 +1,94 @@
+<div class="page-container" id="admin-circulars-page">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+        <h2>✏️ Circular Manager</h2>
+        <button class="primary-btn" onclick="showCircularForm()">+ New Circular</button>
+    </div>
+
+    <!-- Create / Edit Form -->
+    <div id="circular-form-panel" style="display:none;margin-bottom:1.5rem;">
+        <div class="dashboard-card">
+            <h3 id="circular-form-title">Create Circular</h3>
+            <form id="circular-form" onsubmit="saveCircular(event)" style="display:grid;gap:0.75rem;grid-template-columns:1fr 1fr;">
+                <input type="hidden" id="circular-edit-id" value="">
+
+                <div class="input-group" style="grid-column:1/-1;">
+                    <label for="circ-title">Title *</label>
+                    <input type="text" id="circ-title" required placeholder="e.g. Assistant Programmer 2026">
+                </div>
+                <div class="input-group">
+                    <label for="circ-org">Organization *</label>
+                    <input type="text" id="circ-org" required placeholder="e.g. Bangladesh Bank">
+                </div>
+                <div class="input-group">
+                    <label for="circ-cat">Category ID</label>
+                    <input type="number" id="circ-cat" placeholder="1">
+                </div>
+                <div class="input-group">
+                    <label for="circ-vacancy">Vacancy</label>
+                    <input type="number" id="circ-vacancy" placeholder="10">
+                </div>
+                <div class="input-group">
+                    <label for="circ-location">Location</label>
+                    <input type="text" id="circ-location" placeholder="Bangladesh">
+                </div>
+                <div class="input-group">
+                    <label for="circ-pub">Published Date *</label>
+                    <input type="date" id="circ-pub" required>
+                </div>
+                <div class="input-group">
+                    <label for="circ-deadline">Deadline</label>
+                    <input type="date" id="circ-deadline">
+                </div>
+                <div class="input-group">
+                    <label for="circ-salary">Salary</label>
+                    <input type="text" id="circ-salary" placeholder="Negotiable">
+                </div>
+                <div class="input-group">
+                    <label for="circ-apply-url">Apply URL</label>
+                    <input type="url" id="circ-apply-url" placeholder="https://...">
+                </div>
+                <div class="input-group">
+                    <label for="circ-status">Status</label>
+                    <select id="circ-status">
+                        <option value="active">Active</option>
+                        <option value="draft">Draft</option>
+                        <option value="closed">Closed</option>
+                    </select>
+                </div>
+                <div class="input-group" style="align-self:end;">
+                    <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+                        <input type="checkbox" id="circ-featured">
+                        Featured
+                    </label>
+                </div>
+                <div class="input-group" style="grid-column:1/-1;">
+                    <label for="circ-desc">Description</label>
+                    <textarea id="circ-desc" rows="3" placeholder="Job description..."></textarea>
+                </div>
+                <div class="input-group" style="grid-column:1/-1;">
+                    <label for="circ-req">Requirements</label>
+                    <textarea id="circ-req" rows="3" placeholder="Job requirements..."></textarea>
+                </div>
+                <div id="circular-form-error" class="error-msg" style="grid-column:1/-1;"></div>
+                <div style="grid-column:1/-1;display:flex;gap:0.75rem;">
+                    <button type="submit" class="primary-btn" id="circular-save-btn">Save</button>
+                    <button type="button" class="secondary-btn" onclick="hideCircularForm()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Circulars List -->
+    <div class="dashboard-card">
+        <h3>All Circulars</h3>
+        <div id="admin-circular-list">
+            <div class="loading-state"><span class="loading-spinner"></span><p>Loading...</p></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    if (!requireAdmin()) { /* redirected */ } else {
+        loadAdminCirculars();
+    }
+</script>
