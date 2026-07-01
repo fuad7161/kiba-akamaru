@@ -1,10 +1,13 @@
-.PHONY: run build test migrate-up migrate-down docker-up docker-prod-up docker-prod-deploy
+.PHONY: run build test migrate-up migrate-down seed-admin docker-up docker-prod-up docker-prod-deploy
 
 run:
 	go run ./cmd/server/main.go
 
 build:
 	go build -o bin/server ./cmd/server/main.go
+
+seed-admin:
+	go run ./cmd/seed/main.go
 
 
 test:

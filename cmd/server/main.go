@@ -11,7 +11,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -40,9 +39,6 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to connect to postgres")
 	}
 	defer pg.Close()
-
-	// ── Seed admin user (if configured) ────────────────────────
-	seedAdminUser(pg)
 
 	// ── Repositories ───────────────────────────────────────────
 	userRepo := repository.NewUserRepo(pg)
@@ -192,48 +188,6 @@ func main() {
 	}
 
 	log.Info().Msg("server stopped")
-}
-
-// seedAdminUser creates an admin user if it doesn't exist.
-// Configure via SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD env vars.
-func seedAdminUser(pg *pgxpool.Pool) {
-	email := os.Getenv("SEED_ADMIN_EMAIL")
-	password := os.Getenv("SEED_ADMIN_PASSWORD")
-	if email == "" || password == "" {
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	var exists bool
-	err := pg.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)`, email).Scan(&exists)
-	if err != nil {
-		log.Warn().Err(err).Msg("seed admin: failed to check existing user")
-		return
-	}
-	if exists {
-		log.Info().Str("email", email).Msg("seed admin: user already exists, skipping")
-		return
-	}
-
-	hash, err := service.HashPassword(password)
-	if err != nil {
-		log.Warn().Err(err).Msg("seed admin: failed to hash password")
-		return
-	}
-
-	var id string
-	err = pg.QueryRow(ctx,
-		`INSERT INTO users (name, email, password_hash, role, is_verified) VALUES ($1, $2, $3, $4, true) RETURNING id`,
-		"Admin", email, hash, "admin",
-	).Scan(&id)
-	if err != nil {
-		log.Warn().Err(err).Msg("seed admin: failed to create admin user")
-		return
-	}
-
-	log.Info().Str("email", email).Str("id", id).Msg("seed admin: admin user created")
 }
 
 // corsMiddleware adds CORS headers for the frontend
