@@ -30,19 +30,21 @@
 </div>
 
 <script>
-    // Pre-fill from home search
-    if (window.currentSearchValue) {
+    // Pre-fill from home search (via window.currentSearchValue or URL param)
+    var searchVal =
+        window.currentSearchValue ||
+        new URLSearchParams(window.location.search).get("q") ||
+        "";
+    if (searchVal) {
         var si = document.getElementById("search-input");
-        if (si) {
-            si.value = window.currentSearchValue;
-        }
-        window.currentSearchValue = null;
+        if (si) si.value = searchVal;
     }
+    window.currentSearchValue = null;
 
     renderCategoryPills();
     filterCirculars();
 
-    // Search input (debounced via setTimeout)
+    // Search input (debounced)
     (function () {
         var timer;
         var el = document.getElementById("search-input");

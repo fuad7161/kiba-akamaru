@@ -27,10 +27,7 @@
         <form
             id="login-form"
             class="auth-form active"
-            hx-post="/api/v1/auth/login"
-            hx-target-4xx="#login-error"
-            hx-target-500="#login-error"
-            hx-swap="innerHTML"
+            onsubmit="handleLogin(event)"
         >
             <div class="input-group">
                 <label for="login-email">Email</label>
@@ -65,10 +62,7 @@
         <form
             id="register-form"
             class="auth-form"
-            hx-post="/api/v1/auth/register"
-            hx-target-4xx="#register-error"
-            hx-target-500="#register-error"
-            hx-swap="innerHTML"
+            onsubmit="handleRegister(event)"
         >
             <div class="input-group">
                 <label for="register-name">Full name</label>

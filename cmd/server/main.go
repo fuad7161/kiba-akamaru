@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -40,30 +40,43 @@ func main() {
 	}
 	defer pg.Close()
 
-	// ── Auth wiring ─────────────────────────────────────────────
+	// ── Repositories ───────────────────────────────────────────
 	userRepo := repository.NewUserRepo(pg)
-	authSvc := service.NewAuthService(userRepo, pg, cfg)
-	authHandler := handler.NewAuthHandler(authSvc)
-	authRequired := authmw.AuthRequired(authSvc)
+	circularRepo := repository.NewCircularRepo(pg)
+	bookmarkRepo := repository.NewBookmarkRepo(pg)
+	alertRepo := repository.NewAlertRepo(pg)
 
-	// ── Router ──────────────────────────────────────────────────
+	// ── Services ───────────────────────────────────────────────
+	authSvc := service.NewAuthService(userRepo, pg, cfg)
+
+	// ── Handlers ───────────────────────────────────────────────
+	authHandler := handler.NewAuthHandler(authSvc)
+	circularHandler := handler.NewCircularHandler(circularRepo)
+	userHandler := handler.NewUserHandler(authSvc, userRepo, bookmarkRepo, alertRepo)
+	adminHandler := handler.NewAdminHandler(circularRepo)
+
+	// ── Middleware ─────────────────────────────────────────────
+	authRequired := authmw.AuthRequired(authSvc)
+	adminRequired := authmw.AdminOnly
+
+	// ── Router ─────────────────────────────────────────────────
 	r := chi.NewRouter()
 
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Heartbeat("/healthz"))
+	// CORS
+	r.Use(corsMiddleware(cfg.FrontendURL))
+	r.Use(chimw.Logger)
+	r.Use(chimw.Recoverer)
+	r.Use(chimw.RequestID)
+	r.Use(chimw.RealIP)
+	r.Use(chimw.Heartbeat("/healthz"))
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 		defer cancel()
-
 		dbStatus := "ok"
 		if err := pg.Ping(ctx); err != nil {
 			dbStatus = "unavailable"
 		}
-
 		response.JSON(w, http.StatusOK, map[string]string{
 			"status": "ok",
 			"db":     dbStatus,
@@ -85,26 +98,63 @@ func main() {
 			r.Post("/forgot-password", authHandler.ForgotPassword)
 			r.Post("/reset-password", authHandler.ResetPassword)
 
-			// JWTAuth group
 			r.Group(func(r chi.Router) {
 				r.Use(authRequired)
 				r.Post("/logout", authHandler.Logout)
 				r.Get("/me", authHandler.Me)
 			})
-
-			// Refresh (reads cookie, not auth header)
 			r.Post("/refresh", authHandler.Refresh)
+		})
+
+		// ── Circulars (public) ───────────────────────────────
+		r.Get("/circulars", circularHandler.List)
+		r.Get("/circulars/featured", circularHandler.Featured)
+		r.Get("/circulars/{id}", circularHandler.Get)
+
+		// ── Circulars (admin) ────────────────────────────────
+		r.Group(func(r chi.Router) {
+			r.Use(authRequired)
+			r.Use(adminRequired)
+			r.Post("/circulars", circularHandler.Create)
+			r.Put("/circulars/{id}", circularHandler.Update)
+			r.Delete("/circulars/{id}", circularHandler.Delete)
+			r.Patch("/circulars/{id}/feature", circularHandler.ToggleFeature)
+		})
+
+		// ── Categories & Organizations (public) ──────────────
+		r.Get("/categories", circularHandler.ListCategories)
+		r.Get("/organizations", circularHandler.ListOrganizations)
+
+		// ── User profile + bookmarks + alerts (JWT) ─────────
+		r.Group(func(r chi.Router) {
+			r.Use(authRequired)
+			r.Get("/users/me", userHandler.GetProfile)
+			r.Put("/users/me", userHandler.UpdateProfile)
+			r.Get("/users/me/bookmarks", userHandler.ListBookmarks)
+			r.Post("/users/me/bookmarks/{id}", userHandler.AddBookmark)
+			r.Delete("/users/me/bookmarks/{id}", userHandler.RemoveBookmark)
+			r.Get("/users/me/alerts", userHandler.ListAlerts)
+			r.Post("/users/me/alerts", userHandler.CreateAlert)
+			r.Delete("/users/me/alerts/{id}", userHandler.DeleteAlert)
+			r.Patch("/users/me/alerts/{id}/toggle", userHandler.ToggleAlert)
+		})
+
+		// ── Admin (JWT + admin role) ────────────────────────
+		r.Group(func(r chi.Router) {
+			r.Use(authRequired)
+			r.Use(adminRequired)
+			r.Get("/admin/stats", adminHandler.Stats)
+			r.Get("/admin/users", adminHandler.ListUsers)
+			r.Post("/admin/scrape/run", adminHandler.TriggerScrape)
+			r.Get("/admin/scrape/logs", adminHandler.ScrapeLogs)
 		})
 	})
 
 	// ── Serve Frontend ──────────────────────────────────────────
-	// Static assets with explicit paths
 	r.Handle("/css/*", http.StripPrefix("/css", http.FileServer(http.Dir("frontend/css"))))
 	r.Handle("/js/*", http.StripPrefix("/js", http.FileServer(http.Dir("frontend/js"))))
 	r.Handle("/pages/*", http.StripPrefix("/pages", http.FileServer(http.Dir("frontend/pages"))))
 	r.Handle("/components/*", http.StripPrefix("/components", http.FileServer(http.Dir("frontend/components"))))
-
-	// Root → index.html shell
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "frontend/index.html")
 	})
@@ -138,4 +188,21 @@ func main() {
 	}
 
 	log.Info().Msg("server stopped")
+}
+
+// corsMiddleware adds CORS headers for the frontend
+func corsMiddleware(frontendURL string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", frontendURL)
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }

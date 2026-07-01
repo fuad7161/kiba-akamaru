@@ -1,7 +1,7 @@
 # BD Govt Job Circular API — Progress Checklist & TODO
 
 > **Stack:** Go · PostgreSQL · Docker  
-> **Last checked:** June 26, 2026
+> **Last checked:** July 2026
 
 ---
 
@@ -19,23 +19,16 @@
 
 ### 🗄️ Database Layer
 - [x] `internal/database/postgres.go` — pgx connection pool setup
-- [x] **All 7 SQL migrations** (up + down):
-  - [x] `001_create_users.up.sql` / `.down.sql`
-  - [x] `002_create_categories.up.sql` / `.down.sql` *(with seed data for 10 categories)*
-  - [x] `003_create_organizations.up.sql` / `.down.sql`
-  - [x] `004_create_circulars.up.sql` / `.down.sql` *(with all indexes + FTS + trgm)*
-  - [x] `005_create_bookmarks.up.sql` / `.down.sql`
-  - [x] `006_create_alerts.up.sql` / `.down.sql`
-  - [x] `007_create_scrape_logs.up.sql` / `.down.sql`
+- [x] **All 7 SQL migrations** (up + down)
 
 ### ⚙️ Configuration
 - [x] `internal/config/config.go` — env var loading + app config struct
 
 ### 🌐 Entry Point
-- [x] `cmd/server/main.go` — server bootstrap (DB connect, auth routes wired, server start)
+- [x] `cmd/server/main.go` — server bootstrap + all routes wired + CORS
 
 ### 📦 Shared Utilities
-- [x] `pkg/response/response.go` — standard JSON success/error response helpers
+- [x] `pkg/response/response.go` — standard JSON success/error/paginated response helpers
 
 ### 🔐 Auth (complete)
 - [x] `internal/model/user.go` — User + UserProfile structs
@@ -44,79 +37,68 @@
 - [x] `internal/middleware/auth.go` — AuthRequired JWT middleware
 - [x] `internal/handler/auth_handler.go` — All 8 auth endpoints
 
+### 🏗️ Models (complete)
+- [x] `model/user.go`
+- [x] `model/circular.go`
+- [x] `model/category.go`
+- [x] `model/bookmark.go` (includes Alert + ScrapeLog)
+
+### 🗃️ Repositories (complete)
+- [x] `repository/user_repo.go`
+- [x] `repository/circular_repo.go` — List, GetFeatured, GetByID, Create, Update, Delete, ToggleFeatured, ListCategories, ListOrganizations, GetStats, ListUsers, ListScrapeLogs
+- [x] `repository/bookmark_repo.go` — List, Add, Remove + AlertRepo (List, Create, Delete, Toggle)
+
+### 🔧 Services (partial)
+- [x] `service/auth_service.go` — JWT generation, bcrypt hash/compare, email verification tokens
+- [ ] `service/circular_service.go` — (business logic in repository for now)
+- [ ] `service/email_service.go` — SMTP email sending
+- [ ] `service/scrape_service.go` — scrape orchestration
+
+### 🧰 Handlers (complete)
+- [x] `handler/auth.go` — All 8 auth endpoints
+- [x] `handler/circular.go` — List (paginated+filtered), Detail, Featured, Admin CRUD, Toggle featured
+- [x] `handler/user.go` — Profile GET/PUT, Bookmarks CRUD, Alerts CRUD + toggle
+- [x] `handler/category.go` — List categories, List organizations (in circular_handler)
+- [x] `handler/admin.go` — Stats dashboard, User list, Manual scrape trigger, Scrape logs
+
+### 🛡️ Middleware (complete)
+- [x] `middleware/auth.go` — JWT validation middleware (`AuthRequired`)
+- [x] `middleware/admin.go` — Admin role guard (`AdminOnly`)
+- [x] CORS — Inline in main.go
+
 ---
 
 ## ❌ Not Yet Implemented
 
-### 🏗️ Models (`internal/model/`) — partial
-- [x] `model/user.go`
-- [ ] `model/circular.go`
-- [ ] `model/category.go`
-- [ ] `model/organization.go`
-- [ ] `model/bookmark.go`
-- [ ] `model/scrape_log.go`
-
-### 🗃️ Repositories (`internal/repository/`) — partial
-- [x] `repository/user_repo.go`
-- [ ] `repository/circular_repo.go` — DB queries for circulars (list, filter, search, upsert)
-- [ ] `repository/bookmark_repo.go` — add/remove/list bookmarks
-- [ ] `repository/alert_repo.go` — alert CRUD
-
-### 🔧 Services (`internal/service/`) — partial
-- [x] `service/auth_service.go` — JWT generation, bcrypt hash/compare, email verification tokens
-- [ ] `service/circular_service.go` — filtering, pagination logic, upsert orchestration
-- [ ] `service/email_service.go` — SMTP email sending (verification, alerts)
-- [ ] `service/scrape_service.go` — scrape orchestration, `RunBDJobsScrape`, `RunTeletalkScrape`, `ExpireOldCirculars`
-
-### 🧰 Handlers (`internal/handler/`) — partial
-- [x] `handler/auth.go` — Register, Login, Logout, Refresh, Verify Email, Forgot/Reset Password, `/auth/me`
-- [ ] `handler/health.go` — `GET /health` (inline in main.go, move later)
-- [ ] `handler/circular.go` — List (paginated+filtered), Detail, Search, Featured, Admin CRUD, Toggle featured
-- [ ] `handler/user.go` — Profile GET/PUT, Bookmarks CRUD, Alerts CRUD
-- [ ] `handler/category.go` — List categories, List organizations
-- [ ] `handler/admin.go` — Stats dashboard, User list, Manual scrape trigger, Scrape logs
-
-### 🛡️ Middleware (`internal/middleware/`) — partial
-- [x] `middleware/auth.go` — JWT validation middleware (`AuthRequired`)
-- [ ] `middleware/role.go` — Admin role guard (`AdminOnly`)
-- [ ] `middleware/ratelimit.go` — Rate limiter
-- [ ] `middleware/cors.go` — CORS headers using `FRONTEND_URL`
-
 ### 🕷️ Scraper (`internal/scraper/`) — **EMPTY**
-- [ ] `scraper/bdjobs_fetcher.go` — BDJobs internal JSON API fetcher (resty, retry logic)
-- [ ] `scraper/teletalk_scraper.go` — Teletalk HTML scraper (colly)
-- [ ] `scraper/normalizer.go` — Normalize raw scraped data → `Circular` model
-- [ ] `scraper/deduplicator.go` — SHA-256 content hash deduplication
-- [ ] `scraper/scheduler.go` — gocron scheduler (BDJobs 6h, Teletalk 12h, Expire 1am daily)
-
----
-
-## 🔜 Future / Nice-to-Have Features
+- [ ] `scraper/bdjobs_fetcher.go`
+- [ ] `scraper/teletalk_scraper.go`
+- [ ] `scraper/normalizer.go`
+- [ ] `scraper/deduplicator.go`
+- [ ] `scraper/scheduler.go`
 
 ### 🔔 Email Alert System
 - [ ] Cron job to match new circulars against user alert rules
-- [ ] Send digest emails to subscribed users when matching circulars found
-- [ ] Unsubscribe link in alert emails
-
-### 🔍 Additional Data Sources
-- [ ] `bdgovtjobs.com` HTML scraper (backup aggregator)
-- [ ] Ministry `.gov.bd` sites scraper (may require PDF/image parsing)
-
-### 🚀 Production & Deployment
-- [ ] `docker-compose.prod.yml` — production compose file
-- [ ] Nginx reverse proxy config
-- [ ] SSL/TLS via Certbot
-- [ ] CI/CD pipeline (GitHub Actions: lint → test → build → deploy)
+- [ ] Send digest emails
 
 ### 🧪 Testing
-- [ ] Unit tests for auth service (JWT, bcrypt)
-- [ ] Unit tests for deduplicator hash logic
-- [ ] Integration tests for circular repository (testcontainers-go)
-- [ ] Handler-level HTTP tests
-
-### 📊 Observability
-- [ ] Prometheus metrics endpoint (`/metrics`)
-- [ ] Structured logging improvements (request ID, latency tracing via zerolog)
-- [ ] Admin dashboard stats query (total circulars, active/expired counts, users)
+- [ ] Unit tests for auth service
+- [ ] Integration tests
 
 ---
+
+## 📊 API Summary
+
+| Area | Endpoints | Status |
+|---|---|---|
+| Health | `GET /health` | ✅ |
+| Auth | 8 (register, login, logout, verify, forgot, reset, refresh, me) | ✅ |
+| Circulars (public) | 4 (list, featured, detail, search) | ✅ |
+| Circulars (admin) | 4 (create, update, delete, toggle feature) | ✅ |
+| Categories | `GET /categories` | ✅ |
+| Organizations | `GET /organizations` | ✅ |
+| Users | 2 (get/put profile) | ✅ |
+| Bookmarks | 3 (list, add, remove) | ✅ |
+| Alerts | 4 (list, create, delete, toggle) | ✅ |
+| Admin | 4 (stats, users, scrape trigger, scrape logs) | ✅ |
+| **Total** | **32 endpoints** | |
