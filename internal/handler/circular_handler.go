@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/rs/zerolog/log"
 
 	"github.com/fuad71/job-circular-api/internal/model"
 	"github.com/fuad71/job-circular-api/internal/repository"
@@ -52,6 +53,7 @@ func (h *CircularHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	items, total, err := h.circularRepo.List(r.Context(), f)
 	if err != nil {
+		log.Error().Err(err).Msg("failed to list circulars")
 		response.Error(w, http.StatusInternalServerError, "failed to fetch circulars")
 		return
 	}
@@ -66,6 +68,7 @@ func (h *CircularHandler) List(w http.ResponseWriter, r *http.Request) {
 func (h *CircularHandler) Featured(w http.ResponseWriter, r *http.Request) {
 	items, err := h.circularRepo.GetFeatured(r.Context(), 10)
 	if err != nil {
+		log.Error().Err(err).Msg("failed to fetch featured circulars")
 		response.Error(w, http.StatusInternalServerError, "failed to fetch featured")
 		return
 	}
@@ -80,6 +83,7 @@ func (h *CircularHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	c, err := h.circularRepo.GetByID(r.Context(), id)
 	if err != nil {
+		log.Error().Err(err).Str("id", id).Msg("failed to fetch circular")
 		response.Error(w, http.StatusInternalServerError, "failed to fetch circular")
 		return
 	}
@@ -140,6 +144,7 @@ func (h *CircularHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		log.Warn().Err(err).Msg("invalid circular create request body")
 		response.Error(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -159,6 +164,7 @@ func (h *CircularHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	pubDate, err := parseDateStr(input.PublishedDate)
 	if err != nil {
+		log.Warn().Err(err).Str("published_date", input.PublishedDate).Msg("invalid published_date")
 		response.Error(w, http.StatusBadRequest, "invalid published_date format (use YYYY-MM-DD)")
 		return
 	}
@@ -202,10 +208,12 @@ func (h *CircularHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.circularRepo.Create(r.Context(), c); err != nil {
+		log.Error().Err(err).Str("title", c.Title).Msg("failed to create circular")
 		response.Error(w, http.StatusInternalServerError, "failed to create circular")
 		return
 	}
 
+	log.Info().Str("id", c.ID).Str("title", c.Title).Msg("circular created")
 	response.JSON(w, http.StatusCreated, c)
 }
 
@@ -220,6 +228,7 @@ func (h *CircularHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	var input map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		log.Warn().Err(err).Msg("invalid circular update request body")
 		response.Error(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -238,10 +247,12 @@ func (h *CircularHandler) Update(w http.ResponseWriter, r *http.Request) {
 	applyPtrStrField(input, "circular_pdf_url", &existing.CircularPDFURL)
 
 	if err := h.circularRepo.Update(r.Context(), existing); err != nil {
+		log.Error().Err(err).Str("id", id).Msg("failed to update circular")
 		response.Error(w, http.StatusInternalServerError, "failed to update circular")
 		return
 	}
 
+	log.Info().Str("id", id).Msg("circular updated")
 	response.JSON(w, http.StatusOK, existing)
 }
 
@@ -249,9 +260,11 @@ func (h *CircularHandler) Update(w http.ResponseWriter, r *http.Request) {
 func (h *CircularHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if err := h.circularRepo.Delete(r.Context(), id); err != nil {
+		log.Error().Err(err).Str("id", id).Msg("failed to delete circular")
 		response.Error(w, http.StatusInternalServerError, "failed to delete circular")
 		return
 	}
+	log.Info().Str("id", id).Msg("circular deleted")
 	response.JSON(w, http.StatusOK, map[string]string{"message": "deleted"})
 }
 
@@ -260,9 +273,11 @@ func (h *CircularHandler) ToggleFeature(w http.ResponseWriter, r *http.Request) 
 	id := chi.URLParam(r, "id")
 	featured, err := h.circularRepo.ToggleFeatured(r.Context(), id)
 	if err != nil {
+		log.Error().Err(err).Str("id", id).Msg("failed to toggle feature")
 		response.Error(w, http.StatusNotFound, "circular not found")
 		return
 	}
+	log.Info().Str("id", id).Bool("featured", featured).Msg("circular feature toggled")
 	response.JSON(w, http.StatusOK, map[string]bool{"is_featured": featured})
 }
 
@@ -271,6 +286,7 @@ func (h *CircularHandler) ToggleFeature(w http.ResponseWriter, r *http.Request) 
 func (h *CircularHandler) ListCategories(w http.ResponseWriter, r *http.Request) {
 	cats, err := h.circularRepo.ListCategories(r.Context())
 	if err != nil {
+		log.Error().Err(err).Msg("failed to list categories")
 		response.Error(w, http.StatusInternalServerError, "failed to fetch categories")
 		return
 	}
@@ -283,6 +299,7 @@ func (h *CircularHandler) ListCategories(w http.ResponseWriter, r *http.Request)
 func (h *CircularHandler) ListOrganizations(w http.ResponseWriter, r *http.Request) {
 	orgs, err := h.circularRepo.ListOrganizations(r.Context())
 	if err != nil {
+		log.Error().Err(err).Msg("failed to list organizations")
 		response.Error(w, http.StatusInternalServerError, "failed to fetch organizations")
 		return
 	}

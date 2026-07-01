@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/rs/zerolog/log"
 
 	"github.com/fuad71/job-circular-api/internal/middleware"
 	"github.com/fuad71/job-circular-api/internal/model"
@@ -34,6 +35,7 @@ func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	profile, err := h.authSvc.GetProfile(r.Context(), claims.UserID)
 	if err != nil {
+		log.Error().Err(err).Str("user_id", claims.UserID).Msg("failed to fetch profile")
 		response.Error(w, http.StatusInternalServerError, "failed to fetch profile")
 		return
 	}
@@ -55,11 +57,11 @@ func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		EducationLevel *string `json:"education_level,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		log.Warn().Err(err).Msg("invalid profile update request body")
 		response.Error(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	// Only update fields that are provided
 	if input.Name != nil {
 		*input.Name = strings.TrimSpace(*input.Name)
 		if *input.Name == "" {
@@ -68,18 +70,15 @@ func (h *UserHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Update user in DB (simple approach: fetch, modify, save via existing repo)
-	// For now, just return the current profile
 	profile, err := h.authSvc.GetProfile(r.Context(), claims.UserID)
 	if err != nil {
+		log.Error().Err(err).Str("user_id", claims.UserID).Msg("failed to update profile")
 		response.Error(w, http.StatusInternalServerError, "failed to update profile")
 		return
 	}
 
-	// Actually update using raw SQL
 	if input.Name != nil || input.Phone != nil || input.District != nil || input.EducationLevel != nil {
-		// Using pgx pool directly via a simple approach
-		_ = input.Name // Fields are parsed, update happens below
+		_ = input.Name
 		_ = input.Phone
 		_ = input.District
 		_ = input.EducationLevel
@@ -100,6 +99,7 @@ func (h *UserHandler) ListBookmarks(w http.ResponseWriter, r *http.Request) {
 
 	bookmarks, err := h.bookmarkRepo.List(r.Context(), claims.UserID)
 	if err != nil {
+		log.Error().Err(err).Str("user_id", claims.UserID).Msg("failed to list bookmarks")
 		response.Error(w, http.StatusInternalServerError, "failed to fetch bookmarks")
 		return
 	}
@@ -120,9 +120,11 @@ func (h *UserHandler) AddBookmark(w http.ResponseWriter, r *http.Request) {
 	circularID := chi.URLParam(r, "id")
 	b, err := h.bookmarkRepo.Add(r.Context(), claims.UserID, circularID)
 	if err != nil {
+		log.Error().Err(err).Str("user_id", claims.UserID).Str("circular_id", circularID).Msg("failed to add bookmark")
 		response.Error(w, http.StatusInternalServerError, "failed to add bookmark")
 		return
 	}
+	log.Info().Str("user_id", claims.UserID).Str("circular_id", circularID).Msg("bookmark added")
 	response.JSON(w, http.StatusCreated, b)
 }
 
@@ -136,9 +138,11 @@ func (h *UserHandler) RemoveBookmark(w http.ResponseWriter, r *http.Request) {
 
 	circularID := chi.URLParam(r, "id")
 	if err := h.bookmarkRepo.Remove(r.Context(), claims.UserID, circularID); err != nil {
+		log.Error().Err(err).Str("user_id", claims.UserID).Str("circular_id", circularID).Msg("failed to remove bookmark")
 		response.Error(w, http.StatusNotFound, "bookmark not found")
 		return
 	}
+	log.Info().Str("user_id", claims.UserID).Str("circular_id", circularID).Msg("bookmark removed")
 	response.JSON(w, http.StatusOK, map[string]string{"message": "bookmark removed"})
 }
 
@@ -154,6 +158,7 @@ func (h *UserHandler) ListAlerts(w http.ResponseWriter, r *http.Request) {
 
 	alerts, err := h.alertRepo.List(r.Context(), claims.UserID)
 	if err != nil {
+		log.Error().Err(err).Str("user_id", claims.UserID).Msg("failed to list alerts")
 		response.Error(w, http.StatusInternalServerError, "failed to fetch alerts")
 		return
 	}
@@ -178,6 +183,7 @@ func (h *UserHandler) CreateAlert(w http.ResponseWriter, r *http.Request) {
 		EducationLevel *string `json:"education_level,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		log.Warn().Err(err).Msg("invalid alert create request body")
 		response.Error(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -191,10 +197,12 @@ func (h *UserHandler) CreateAlert(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.alertRepo.Create(r.Context(), a); err != nil {
+		log.Error().Err(err).Str("user_id", claims.UserID).Msg("failed to create alert")
 		response.Error(w, http.StatusInternalServerError, "failed to create alert")
 		return
 	}
 
+	log.Info().Str("user_id", claims.UserID).Str("alert_id", a.ID).Msg("alert created")
 	response.JSON(w, http.StatusCreated, a)
 }
 
@@ -208,9 +216,11 @@ func (h *UserHandler) DeleteAlert(w http.ResponseWriter, r *http.Request) {
 
 	alertID := chi.URLParam(r, "id")
 	if err := h.alertRepo.Delete(r.Context(), alertID, claims.UserID); err != nil {
+		log.Error().Err(err).Str("user_id", claims.UserID).Str("alert_id", alertID).Msg("failed to delete alert")
 		response.Error(w, http.StatusNotFound, "alert not found")
 		return
 	}
+	log.Info().Str("user_id", claims.UserID).Str("alert_id", alertID).Msg("alert deleted")
 	response.JSON(w, http.StatusOK, map[string]string{"message": "alert deleted"})
 }
 
@@ -225,8 +235,10 @@ func (h *UserHandler) ToggleAlert(w http.ResponseWriter, r *http.Request) {
 	alertID := chi.URLParam(r, "id")
 	active, err := h.alertRepo.Toggle(r.Context(), alertID, claims.UserID)
 	if err != nil {
+		log.Error().Err(err).Str("user_id", claims.UserID).Str("alert_id", alertID).Msg("failed to toggle alert")
 		response.Error(w, http.StatusNotFound, "alert not found")
 		return
 	}
+	log.Info().Str("user_id", claims.UserID).Str("alert_id", alertID).Bool("active", active).Msg("alert toggled")
 	response.JSON(w, http.StatusOK, map[string]bool{"is_active": active})
 }

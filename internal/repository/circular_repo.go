@@ -255,7 +255,7 @@ func (r *CircularRepo) Create(ctx context.Context, c *model.Circular) error {
 		apply_url, apply_via, teletalk_code,
 		description, requirements, circular_image_url, circular_pdf_url,
 		status, is_featured, source_url
-	) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36)
+	) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35)
 		RETURNING id, created_at, updated_at`
 	return r.pool.QueryRow(ctx, query,
 		c.Source, c.Title, c.OrganizationName, c.OrganizationID, c.CategoryID,

@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/fuad71/job-circular-api/internal/middleware"
 	"github.com/fuad71/job-circular-api/internal/service"
 	"github.com/fuad71/job-circular-api/pkg/response"
@@ -22,6 +24,7 @@ func NewAuthHandler(authSvc *service.AuthService) *AuthHandler {
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var input service.RegisterInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		log.Warn().Err(err).Msg("invalid register request body")
 		response.Error(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -41,13 +44,16 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	user, err := h.authSvc.Register(r.Context(), input)
 	if err != nil {
 		if strings.Contains(err.Error(), "already registered") {
+			log.Warn().Str("email", input.Email).Msg("registration attempt with existing email")
 			response.Error(w, http.StatusConflict, err.Error())
 			return
 		}
+		log.Error().Err(err).Str("email", input.Email).Msg("registration failed")
 		response.Error(w, http.StatusInternalServerError, "registration failed")
 		return
 	}
 
+	log.Info().Str("id", user.ID).Str("email", user.Email).Msg("user registered")
 	response.JSON(w, http.StatusCreated, map[string]interface{}{
 		"id":      user.ID,
 		"message": "registration successful",
@@ -58,6 +64,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var input service.LoginInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		log.Warn().Err(err).Msg("invalid login request body")
 		response.Error(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -71,9 +78,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	output, err := h.authSvc.Login(r.Context(), input)
 	if err != nil {
 		if strings.Contains(err.Error(), "invalid email or password") {
+			log.Warn().Str("email", input.Email).Msg("failed login attempt")
 			response.Error(w, http.StatusUnauthorized, "invalid email or password")
 			return
 		}
+		log.Error().Err(err).Str("email", input.Email).Msg("login failed")
 		response.Error(w, http.StatusInternalServerError, "login failed")
 		return
 	}
@@ -89,6 +98,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   7 * 24 * 60 * 60, // 7 days
 	})
 
+	log.Info().Str("email", input.Email).Str("user_id", output.User.ID).Msg("user logged in")
 	response.JSON(w, http.StatusOK, map[string]interface{}{
 		"access_token": output.AccessToken,
 		"user":         output.User,
@@ -104,6 +114,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.authSvc.Logout(r.Context(), claims.UserID); err != nil {
+		log.Error().Err(err).Str("user_id", claims.UserID).Msg("logout failed")
 		response.Error(w, http.StatusInternalServerError, "logout failed")
 		return
 	}
@@ -117,6 +128,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   -1,
 	})
 
+	log.Info().Str("user_id", claims.UserID).Msg("user logged out")
 	response.JSON(w, http.StatusOK, map[string]string{"message": "logged out"})
 }
 
@@ -129,10 +141,12 @@ func (h *AuthHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.authSvc.VerifyEmail(r.Context(), token); err != nil {
+		log.Warn().Err(err).Msg("email verification failed")
 		response.Error(w, http.StatusBadRequest, "invalid or expired token")
 		return
 	}
 
+	log.Info().Msg("email verified")
 	response.JSON(w, http.StatusOK, map[string]string{"message": "email verified successfully"})
 }
 
@@ -142,6 +156,7 @@ func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 		Email string `json:"email"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		log.Warn().Err(err).Msg("invalid forgot-password request body")
 		response.Error(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -153,6 +168,7 @@ func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.authSvc.ForgotPassword(r.Context(), input.Email); err != nil {
+		log.Error().Err(err).Str("email", input.Email).Msg("forgot password failed")
 		response.Error(w, http.StatusInternalServerError, "something went wrong")
 		return
 	}
@@ -166,6 +182,7 @@ func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	var input service.ResetPasswordInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		log.Warn().Err(err).Msg("invalid reset-password request body")
 		response.Error(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -180,10 +197,12 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.authSvc.ResetPassword(r.Context(), input); err != nil {
+		log.Warn().Err(err).Msg("password reset failed")
 		response.Error(w, http.StatusBadRequest, "invalid or expired token")
 		return
 	}
 
+	log.Info().Msg("password reset successful")
 	response.JSON(w, http.StatusOK, map[string]string{"message": "password reset successfully"})
 }
 
@@ -197,6 +216,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	output, err := h.authSvc.RefreshToken(r.Context(), cookie.Value)
 	if err != nil {
+		log.Warn().Err(err).Msg("token refresh failed")
 		response.Error(w, http.StatusUnauthorized, "invalid or expired refresh token")
 		return
 	}
@@ -212,6 +232,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   7 * 24 * 60 * 60,
 	})
 
+	log.Info().Str("user_id", output.User.ID).Msg("token refreshed")
 	response.JSON(w, http.StatusOK, map[string]interface{}{
 		"access_token": output.AccessToken,
 		"user":         output.User,
@@ -228,6 +249,7 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 
 	profile, err := h.authSvc.GetProfile(r.Context(), claims.UserID)
 	if err != nil {
+		log.Error().Err(err).Str("user_id", claims.UserID).Msg("failed to fetch profile")
 		response.Error(w, http.StatusInternalServerError, "failed to fetch profile")
 		return
 	}
