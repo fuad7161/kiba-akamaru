@@ -56,10 +56,19 @@ function apiDelete(path) {
   });
 }
 
-// ── Init ───────────────────────────────────────────────────────────────────────
+// Init — set up event delegation for auth forms and clicks
 document.addEventListener("DOMContentLoaded", function () {
   setAuthUI();
   document.addEventListener("click", handleDynamicClick);
+
+  // Delegated submit: catch login/register forms even when loaded via HTMX
+  document.addEventListener("submit", function (evt) {
+    if (evt.target.id === "login-form") {
+      handleLogin(evt);
+    } else if (evt.target.id === "register-form") {
+      handleRegister(evt);
+    }
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
