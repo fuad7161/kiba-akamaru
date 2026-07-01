@@ -56,19 +56,11 @@ function apiDelete(path) {
   });
 }
 
-// Init — set up event delegation for auth forms and clicks
+// Init — set up event delegation
+
 document.addEventListener("DOMContentLoaded", function () {
   setAuthUI();
   document.addEventListener("click", handleDynamicClick);
-
-  // Delegated submit: catch login/register forms even when loaded via HTMX
-  document.addEventListener("submit", function (evt) {
-    if (evt.target.id === "login-form") {
-      handleLogin(evt);
-    } else if (evt.target.id === "register-form") {
-      handleRegister(evt);
-    }
-  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -138,68 +130,42 @@ document.body.addEventListener("htmx:responseError", function (evt) {
   }
 });
 
-// Auth form handlers (plain JS, not HTMX — full control over flow)
+// Auth form handlers — called directly from button onclick
 
-function handleLogin(evt) {
-  evt.preventDefault();
-  var email = document.getElementById("login-email")?.value?.trim();
-  var password = document.getElementById("login-password")?.value;
-  var errorEl = document.getElementById("login-error");
+function handleLoginFromForm(type) {
+  var errorEl, email, password, name;
 
-  if (!email || !password) {
-    if (errorEl) {
-      errorEl.textContent = "Email and password are required";
-      errorEl.style.color = "var(--error)";
-    }
-    return;
+  if (type === "login") {
+    email = document.getElementById("login-email");
+    password = document.getElementById("login-password");
+    errorEl = document.getElementById("login-error");
+  } else {
+    name = document.getElementById("register-name");
+    email = document.getElementById("register-email");
+    password = document.getElementById("register-password");
+    errorEl = document.getElementById("register-error");
   }
 
-  if (errorEl) errorEl.textContent = "";
+  var emailVal = email ? email.value.trim() : "";
+  var passwordVal = password ? password.value : "";
+  var nameVal = name ? name.value.trim() : "";
 
-  apiPost("/auth/login", { email: email, password: password })
-    .then(function (res) {
-      if (
-        res.ok &&
-        res.body.success &&
-        res.body.data &&
-        res.body.data.access_token
-      ) {
-        token = res.body.data.access_token;
-        user = res.body.data.user;
-        saveAuth();
-        setAuthUI();
-        fetchBookmarks();
-        closeAuthPanel();
-      } else {
-        if (errorEl) {
-          errorEl.textContent = (res.body && res.body.error) || "Login failed";
-          errorEl.style.color = "var(--error)";
-        }
-      }
-    })
-    .catch(function () {
-      if (errorEl) {
-        errorEl.textContent = "Network error. Is the server running?";
-        errorEl.style.color = "var(--error)";
-      }
-    });
-}
-
-function handleRegister(evt) {
-  evt.preventDefault();
-  var name = document.getElementById("register-name")?.value?.trim();
-  var email = document.getElementById("register-email")?.value?.trim();
-  var password = document.getElementById("register-password")?.value;
-  var errorEl = document.getElementById("register-error");
-
-  if (!name || !email || !password) {
+  // Validation
+  if (type === "register" && !nameVal) {
     if (errorEl) {
       errorEl.textContent = "All fields are required";
       errorEl.style.color = "var(--error)";
     }
     return;
   }
-  if (password.length < 6) {
+  if (!emailVal || !passwordVal) {
+    if (errorEl) {
+      errorEl.textContent = "Email and password are required";
+      errorEl.style.color = "var(--error)";
+    }
+    return;
+  }
+  if (type === "register" && passwordVal.length < 6) {
     if (errorEl) {
       errorEl.textContent = "Password must be at least 6 characters";
       errorEl.style.color = "var(--error)";
@@ -207,14 +173,50 @@ function handleRegister(evt) {
     return;
   }
 
-  if (errorEl) errorEl.textContent = "";
+  if (errorEl) errorEl.textContent = "Signing in...";
 
-  apiPost("/auth/register", { name: name, email: email, password: password })
-    .then(function (res) {
-      if (res.ok && res.body.success) {
-        // Auto-login after successful registration
-        apiPost("/auth/login", { email: email, password: password }).then(
-          function (loginRes) {
+  if (type === "login") {
+    apiPost("/auth/login", { email: emailVal, password: passwordVal })
+      .then(function (res) {
+        if (
+          res.ok &&
+          res.body.success &&
+          res.body.data &&
+          res.body.data.access_token
+        ) {
+          token = res.body.data.access_token;
+          user = res.body.data.user;
+          saveAuth();
+          setAuthUI();
+          fetchBookmarks();
+          closeAuthPanel();
+        } else {
+          if (errorEl) {
+            errorEl.textContent =
+              (res.body && res.body.error) || "Login failed";
+            errorEl.style.color = "var(--error)";
+          }
+        }
+      })
+      .catch(function () {
+        if (errorEl) {
+          errorEl.textContent = "Network error. Is the server running?";
+          errorEl.style.color = "var(--error)";
+        }
+      });
+  } else {
+    apiPost("/auth/register", {
+      name: nameVal,
+      email: emailVal,
+      password: passwordVal,
+    })
+      .then(function (res) {
+        if (res.ok && res.body.success) {
+          // Auto-login after registration
+          apiPost("/auth/login", {
+            email: emailVal,
+            password: passwordVal,
+          }).then(function (loginRes) {
             if (
               loginRes.ok &&
               loginRes.body.success &&
@@ -234,22 +236,22 @@ function handleRegister(evt) {
               }
               switchTab("login");
             }
-          },
-        );
-      } else {
+          });
+        } else {
+          if (errorEl) {
+            errorEl.textContent =
+              (res.body && res.body.error) || "Registration failed";
+            errorEl.style.color = "var(--error)";
+          }
+        }
+      })
+      .catch(function () {
         if (errorEl) {
-          errorEl.textContent =
-            (res.body && res.body.error) || "Registration failed";
+          errorEl.textContent = "Network error. Is the server running?";
           errorEl.style.color = "var(--error)";
         }
-      }
-    })
-    .catch(function () {
-      if (errorEl) {
-        errorEl.textContent = "Network error. Is the server running?";
-        errorEl.style.color = "var(--error)";
-      }
-    });
+      });
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
